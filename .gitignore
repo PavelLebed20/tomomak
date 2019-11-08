@@ -1,0 +1,18 @@
+
+# setuptools
+.eggs/
+
+doc/*/_build
+doc/*/.doctrees
+build/
+dist/
+*.egg-info
+env/
+.env/
+.cache
+.pytest_cache
+.coverage
+.coverage.*
+coverage.xml
+.idea
+
