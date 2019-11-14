@@ -1,0 +1,134 @@
+import numpy as np
+from tomomak.calc import multiply
+
+
+class Mesh:
+    """
+
+    """
+
+    def __init__(self, axes):
+        self._axes = []
+        self._dimension = 0
+        for axis in axes:
+            self.add_axis(axis)
+
+    @property
+    def dimension(self):
+        return self._dimension
+
+    @property
+    def axes(self):
+        return self._axes
+
+    def add_axis(self, axis):
+        self._axes.append(axis)
+        self._dimension += axis.dimension
+
+    def remove_axis(self, index=-1):
+        self._dimension -= self._axes[index].dimension
+        del self._axes[index]
+
+    def integrate(self, data, index, integrate_type='integrate'):
+        """ Calculates sum of data * dv or sum of data over given axes,
+        where dv is length/surface/volume of a cell.
+
+        Args:
+            data (numpy.array):
+            index (int/list of int):
+            integrate_type (string):
+
+        Returns:
+            numpy.array: Integrated or summed array
+        """
+        if isinstance(index, int):
+            index = [index]
+        axis_shift = 0
+        for i in index:
+            axis = i + axis_shift
+            if integrate_type != 'sum':
+                dv = self.axes[i].volumes
+                data = multiply.multiply_along_axis(data, dv, axis)
+            data = np.sum(data, axis)
+            axis_shift -= 1
+        return data
+
+    def _other(self, index):
+        if isinstance(index, int):
+            index = [index]
+        invert_index = []
+        for axis_index, _ in enumerate(self.axes):
+            if all(axis_index != i for i in index):
+                invert_index.append(axis_index)
+        return invert_index
+
+    def integrate_other(self, data, index):
+        invert_index = self._other(index)
+        return self.integrate(data, invert_index)
+
+    def sum_other(self, data, index):
+        invert_index = self._other(index)
+        return self.integrate(data, invert_index, integrate_type='sum')
+
+    def plot1d(self, data, index=0, data_type='solution', *args, **kwargs):
+        if data_type == 'solution':
+            data = self.integrate_other(data, index)
+        elif data_type == 'detector_geometry':
+            for i, d in enumerate(data):
+                data[i] = self.sum_other(d, index)
+        else:
+            raise AttributeError('data type {} is unknown'.format(data_type))
+        self._axes[index].plot1d(data, data_type=data_type, *args, **kwargs)
+
+    def plot2d(self, data, index=None, *args, **kwargs):
+        if index is None:
+            index = [0]
+        # try to draw using only 1 axis
+        if isinstance(index, int):
+            index = [index]
+        if len(index) == 1:
+            try:
+                self._axes[index[0]].plot2d(data, *args, **kwargs)
+                return
+            except AttributeError:
+                index.append(index[0] + 1)
+        # try to draw using two axes
+        axis2d = self._axes[index[0]].to2d(self._axes[index[1]])
+        axis2d.plot2d(data, *args, **kwargs)
+
+    def plot3d(self, data, index=None, *args, **kwargs):
+        if index is None:
+            index = [0]
+        # try to draw using only 1 axis
+        if isinstance(index, int):
+            try:
+                self._axes[index].plot3d(data, *args, **kwargs)
+                return
+            except AttributeError:
+                index = [index, index+1]
+        elif len(index) == 1:
+            try:
+                self._axes[index[0]].plot3d(data, *args, **kwargs)
+                return
+            except AttributeError:
+                index.append(index[0] + 1)
+        # try to draw using 2 axes
+        try:
+            axis2d = self._axes[index[0]].to2d(self._axes[index[1]])
+        except AttributeError:
+            axis2d = self._axes[index[0]].to3d(self._axes[index[1]])
+        try:
+            axis2d.plot3d(data, *args, **kwargs)
+            return
+        except AttributeError:
+            index.append(index[1] + 1)
+        # try to draw using 3 axes
+        axis3d = axis2d.to3d(self._axes[index[2]])
+        axis3d.plot3d(data, *args, **kwargs)
+
+    def draw_mesh(self):
+        pass
+
+    def density(self, data, coordinate):
+        pass
+

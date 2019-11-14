@@ -55,7 +55,7 @@ class Model:
             geometry_len = len(self._detector_geometry)
             if self._detector_signal is not None:
                 if not isinstance(self._detector_signal[0], numbers.Number):
-                    raise Exception("detector_signal should be 1D iterable of numbers")
+                    raise TypeError("detector_signal should be 1D iterable of numbers")
                 signal_len = len(self._detector_signal)
                 if geometry_len != signal_len:
                     raise Exception("detector_signal and detector_geometry should have same length. "
@@ -67,3 +67,13 @@ class Model:
                                     "detector_geometry[0] shape is {}; solution shape is {}."
                                     .format(self._detector_geometry[0].shape, self._solution.shape))
 ################ADD MESH check################
+
+    def plot1d(self, index=0, data_type="solution", **kwargs):
+        if data_type == "solution":
+            data = self._solution
+        elif data_type == "detector_geometry":
+            data = self._detector_geometry
+        else:
+            raise AttributeError("data type {} is unknown".format(data_type))
+        self._mesh.plot1d(data=data, index=index, data_type=data_type,  **kwargs)
+
