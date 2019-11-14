@@ -52,6 +52,22 @@ class Abstract1dAxis(ABC):
         :return:
         """
 
+    @property
+    @abstractmethod
+    def size(self):
+        """
+
+        :return:
+        """
+
+    @property
+    @abstractmethod
+    def regular(self):
+        """
+
+        :return:
+        """
+
     @abstractmethod
     def to2d(self, axis2):
         """
@@ -59,3 +75,4 @@ class Abstract1dAxis(ABC):
         :param axis2:
         :return:
         """
+

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def multiply_along_axis(a, b, axis):
     """ Multiply numpy array by 1-D numpy array along given axis.
 

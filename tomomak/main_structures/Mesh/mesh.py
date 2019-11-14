@@ -13,6 +13,12 @@ class Mesh:
         for axis in axes:
             self.add_axis(axis)
 
+    def __str__(self):
+        res = "{}-D mesh with {} axes:\n".format(self.dimension, len(self.axes))
+        for i, ax in enumerate(self.axes):
+            res += "{}. {} \n".format(i+1, ax)
+        return res
+
     @property
     def dimension(self):
         return self._dimension
@@ -20,6 +26,10 @@ class Mesh:
     @property
     def axes(self):
         return self._axes
+
+    @property
+    def shape(self):
+        return tuple([ax.size for ax in self.axes])
 
     def add_axis(self, axis):
         self._axes.append(axis)
@@ -70,35 +80,40 @@ class Mesh:
         invert_index = self._other(index)
         return self.integrate(data, invert_index, integrate_type='sum')
 
-    def plot1d(self, data, index=0, data_type='solution', *args, **kwargs):
+    def _prepare_data1d(self, data, index, data_type):
         if data_type == 'solution':
-            data = self.integrate_other(data, index)
+            new_data = self.integrate_other(data, index)
         elif data_type == 'detector_geometry':
+            new_data = np.zeros([data.shape[0], data.shape[index+1]])
             for i, d in enumerate(data):
-                data[i] = self.sum_other(d, index)
+                new_data[i] = self.sum_other(d, index)
         else:
             raise AttributeError('data type {} is unknown'.format(data_type))
-        self._axes[index].plot1d(data, data_type=data_type, *args, **kwargs)
+        return new_data
 
-    def plot2d(self, data, index=None, *args, **kwargs):
-        if index is None:
-            index = [0]
-        # try to draw using only 1 axis
+    def plot1d(self, data, index=0, data_type='solution', *args, **kwargs):
+        new_data = self._prepare_data1d(data, index, data_type)
+        plot, ax = self._axes[index].plot1d(new_data, data_type=data_type, *args, **kwargs)
+        return plot, ax
+
+    def plot2d(self, data, index=0, data_type='solution', *args, **kwargs):
         if isinstance(index, int):
             index = [index]
+        # try to draw using only 1 axis
         if len(index) == 1:
             try:
-                self._axes[index[0]].plot2d(data, *args, **kwargs)
-                return
+                new_data = self._prepare_data1d(data, index[0], data_type)
+                plot, ax = self._axes[index[0]].plot2d(new_data, *args, **kwargs)
+                return plot, ax
             except AttributeError:
                 index.append(index[0] + 1)
         # try to draw using two axes
         axis2d = self._axes[index[0]].to2d(self._axes[index[1]])
         axis2d.plot2d(data, *args, **kwargs)
 
-    def plot3d(self, data, index=None, *args, **kwargs):
-        if index is None:
-            index = [0]
+    def plot3d(self, data, index=0, *args, **kwargs):
+        if isinstance(index, int):
+            index = [index]
         # try to draw using only 1 axis
         if isinstance(index, int):
             try:
@@ -131,4 +146,3 @@ class Mesh:
 
     def density(self, data, coordinate):
         pass
-

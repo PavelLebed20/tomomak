@@ -1,8 +1,7 @@
 from . import abstract_axes
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import colors
-from matplotlib.widgets import Button
+from tomomak.plots import plot1d
 import warnings
 
 
@@ -23,7 +22,7 @@ class Axis1d(abstract_axes.Abstract1dAxis):
             self._create_using_coordinates(coordinates, lower_limit)
 
     def _create_using_limits(self, lower_limit, upper_limit, size):
-        self.size = size
+        self._size = size
         self._boundaries = [lower_limit, upper_limit]
         dv = np.abs(upper_limit - lower_limit) / size
         self._volumes = np.full(size, dv)
@@ -37,7 +36,7 @@ class Axis1d(abstract_axes.Abstract1dAxis):
         if (coordinates[-1] > lower_limit > coordinates[0]
                 or coordinates[-1] < lower_limit < coordinates[0]):
             raise Exception("lower_limit is inside of the first segment.")
-        self.size = len(coordinates)
+        self._size = len(coordinates)
         self._coordinates = coordinates
         dv = np.diff(coordinates)
         self._volumes = np.zeros(self.size)
@@ -60,6 +59,14 @@ class Axis1d(abstract_axes.Abstract1dAxis):
             self._cell_edges[i + 1] = self._volumes[i] + self._cell_edges[i]
         return self._cell_edges
 
+    def __str__(self):
+        if self.regular:
+            ax_type = 'regular'
+        else:
+            ax_type = 'irregular'
+        return "{}-D {} axis with {} cells. Name: {}. Boundaries: {} {}. "\
+            .format(self.dimension, ax_type, self.size, self.name, self._boundaries, self.units)
+
     @property
     def volumes(self):
         return self._volumes
@@ -76,69 +83,38 @@ class Axis1d(abstract_axes.Abstract1dAxis):
     def cell_edges(self):
         return self._cell_edges
 
+    @property
+    def size(self):
+        return self._size
+
+    @property
+    def regular(self):
+        if all(self._volumes - self._volumes[0] == 0):
+            return True
+        else:
+            return False
+
     def plot1d(self, data, data_type='solution', filled=True, fill_scheme=plt.cm.viridis, grid=False,  **kwargs):
         """
 
         :return:
         """
         if data_type == 'solution':
-            fig, ax = plt.subplots()
-            # n_bins = data.shape[0]
-            # print(n_bins, data)
-            # n, bins, patches = ax.hist(self.coordinates, weights=data, bins=n_bins, range=self.boundaries, **kwargs)
-            color = None
-            if filled:
-                fracs = data / data.max()
-                norm = colors.Normalize(fracs.min(), fracs.max())
-                color = np.zeros((len(fracs), 4))
-                for i, v in enumerate(fracs):
-                    color[i] = fill_scheme(norm(v))
-            ax.bar(self.coordinates, data, width=self.volumes, color=color, **kwargs)
-            ax.set(xlabel="{}, {}".format(self.name, self.units),
-                   ylabel=r"Density, {}{}".format(self.units, '$^{-1}$'),
-                   title="Object density")
-            if grid:
-                ax.grid()
+            y_label = r"Density, {}{}".format(self.units, '$^{-1}$')
+            plot, ax = plot1d.bar1d(data, self, title='Density', ylabel=y_label,
+                                    filled=filled, fill_scheme=fill_scheme, grid=grid, **kwargs)
             plt.show()
         elif data_type == 'detector_geometry':
-
-            freqs = np.arange(2, 20, 3)
-
-            fig, ax = plt.subplots()
-            plt.subplots_adjust(bottom=0.2)
-            t = np.arange(0.0, 1.0, 0.001)
-            s = np.sin(2 * np.pi * freqs[0] * t)
-            l, = plt.plot(t, s, lw=2)
-
-            class Index(object):
-                ind = 0
-
-                def next(self, event):
-                    self.ind += 1
-                    i = self.ind % len(freqs)
-                    ydata = np.sin(2 * np.pi * freqs[i] * t)
-                    l.set_ydata(ydata)
-                    plt.draw()
-
-                def prev(self, event):
-                    self.ind -= 1
-                    i = self.ind % len(freqs)
-                    ydata = np.sin(2 * np.pi * freqs[i] * t)
-                    l.set_ydata(ydata)
-                    plt.draw()
-
-            callback = Index()
-            axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
-            axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
-            bnext = Button(axnext, 'Next')
-            bnext.on_clicked(callback.next)
-            bprev = Button(axprev, 'Previous')
-            bprev.on_clicked(callback.prev)
-
+            title = 'Detector 1/{}'.format(data.shape[0])
+            y_label = 'Intersection length, {}'.format(self.units)
+            plot, ax, _ = plot1d.detector_bar1d(data, self, title=title, ylabel=y_label,
+                                                filled=filled, fill_scheme=fill_scheme, grid=grid,  **kwargs)
             plt.show()
         else:
             raise AttributeError('data type {} is unknown'.format(data_type))
+        return plot, ax
 
+        return 1, 1
     def to2d(self, axis2):
         """
 
