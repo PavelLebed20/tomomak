@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.widgets import Button
+from . import interactive
 
 
 def bar1d(data, axis, title='', ylabel='', filled=True, fill_scheme='viridis', edgecolor='black',
@@ -45,39 +46,25 @@ def _fill_plot(data, fill_scheme):
         color[i] = fill_scheme(norm(v))
     return color
 
-
 def detector_bar1d(data, axis, title='', ylabel='', filled=True,
                    fill_scheme='viridis', edgecolor='black', grid=False, *args, **kwargs):
 
-    class Index(object):
-        ind = 0
+    class BarPlotSlice(interactive.DetectorPlotSlicer):
         def redraw(self):
-            i = self.ind % data.shape[0]
-            y_data = data[i]
+
+            y_data = self.data[self.ind]
             for r, h in zip(plot, y_data):
                 r.set_height(h)
-            new_title = 'Detector {}/{}'.format(i + 1, data.shape[0])
-            ax.set(title=new_title.format(data.shape[0]))
             color = _fill_plot(y_data, fill_scheme)
-            ax.relim()
-            ax.autoscale_view()
             for c, p in zip(color, plot):
                 if filled:
                     p.set_color(c)
                 p.set_edgecolor(edgecolor)
-            plt.draw()
-
-        def next(self, _):
-            self.ind += 1
-            self.redraw()
-
-        def prev(self, _):
-            self.ind -= 1
-            self.redraw()
+            super().redraw()
 
     plot, ax = bar1d(data[0], axis, title, ylabel, filled, fill_scheme, edgecolor, grid, *args, **kwargs)
     plt.subplots_adjust(bottom=0.2)
-    callback = Index()
+    callback = BarPlotSlice(data, ax)
     ax_prev = plt.axes([0.7, 0.02, 0.1, 0.075])
     ax_next = plt.axes([0.81, 0.02, 0.1, 0.075])
     b_next = Button(ax_next, 'Next')
