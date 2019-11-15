@@ -14,7 +14,7 @@ class Mesh:
             self.add_axis(axis)
 
     def __str__(self):
-        res = "{}-D mesh with {} axes:\n".format(self.dimension, len(self.axes))
+        res = "{}D mesh with {} axes:\n".format(self.dimension, len(self.axes))
         for i, ax in enumerate(self.axes):
             res += "{}. {} \n".format(i+1, ax)
         return res
@@ -80,7 +80,7 @@ class Mesh:
         invert_index = self._other(index)
         return self.integrate(data, invert_index, integrate_type='sum')
 
-    def _prepare_data1d(self, data, index, data_type):
+    def _prepare_data(self, data, index, data_type):
         if data_type == 'solution':
             new_data = self.integrate_other(data, index)
         elif data_type == 'detector_geometry':
@@ -92,29 +92,34 @@ class Mesh:
         return new_data
 
     def plot1d(self, data, index=0, data_type='solution', *args, **kwargs):
-        new_data = self._prepare_data1d(data, index, data_type)
-        plot, ax = self._axes[index].plot1d(new_data, data_type=data_type, *args, **kwargs)
+        new_data = self._prepare_data(data, index, data_type)
+        plot, ax = self._axes[index].plot1d(new_data, data_type, *args, **kwargs)
         return plot, ax
 
     def plot2d(self, data, index=0, data_type='solution', *args, **kwargs):
         if isinstance(index, int):
             index = [index]
-        # try to draw using only 1 axis
+        # try to draw using 1 axis
         if len(index) == 1:
             try:
-                new_data = self._prepare_data1d(data, index[0], data_type)
+                new_data = self._prepare_data(data, index[0], data_type)
                 plot, ax = self._axes[index[0]].plot2d(new_data, *args, **kwargs)
                 return plot, ax
-            except AttributeError:
+            except (AttributeError, TypeError):
                 index.append(index[0] + 1)
-        # try to draw using two axes
-        axis2d = self._axes[index[0]].to2d(self._axes[index[1]])
-        axis2d.plot2d(data, *args, **kwargs)
+        # try to draw using 2 axes
+        new_data = self._prepare_data(data, index, data_type)
+        try:
+            plot, ax = self._axes[index[0]].plot2d(new_data, self._axes[index[1]], *args, **kwargs)
+        except (AttributeError, NotImplementedError):
+            new_data = new_data.transpose()
+            plot, ax = self._axes[index[1]].plot2d(new_data, self._axes[index[0]], *args, **kwargs)
+        return plot, ax
 
     def plot3d(self, data, index=0, *args, **kwargs):
         if isinstance(index, int):
             index = [index]
-        # try to draw using only 1 axis
+        # try to draw using 1 axis
         if isinstance(index, int):
             try:
                 self._axes[index].plot3d(data, *args, **kwargs)
@@ -135,7 +140,7 @@ class Mesh:
         try:
             axis2d.plot3d(data, *args, **kwargs)
             return
-        except AttributeError:
+        except (AttributeError, NotImplementedError):
             index.append(index[1] + 1)
         # try to draw using 3 axes
         axis3d = axis2d.to3d(self._axes[index[2]])

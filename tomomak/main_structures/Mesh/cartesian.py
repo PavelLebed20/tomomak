@@ -1,7 +1,7 @@
 from . import abstract_axes
 import numpy as np
 import matplotlib.pyplot as plt
-from tomomak.plots import plot1d
+from tomomak.plots import plot1d, plot2d
 import warnings
 
 
@@ -64,7 +64,7 @@ class Axis1d(abstract_axes.Abstract1dAxis):
             ax_type = 'regular'
         else:
             ax_type = 'irregular'
-        return "{}-D {} axis with {} cells. Name: {}. Boundaries: {} {}. "\
+        return "{}D {} axis with {} cells. Name: {}. Boundaries: {} {}. "\
             .format(self.dimension, ax_type, self.size, self.name, self._boundaries, self.units)
 
     @property
@@ -94,31 +94,45 @@ class Axis1d(abstract_axes.Abstract1dAxis):
         else:
             return False
 
-    def plot1d(self, data, data_type='solution', filled=True, fill_scheme=plt.cm.viridis, grid=False,  **kwargs):
+    def plot1d(self, data, data_type='solution', filled=True,
+               fill_scheme='viridis', edgecolor='black', grid=False, *args, **kwargs):
         """
 
         :return:
         """
         if data_type == 'solution':
             y_label = r"Density, {}{}".format(self.units, '$^{-1}$')
-            plot, ax = plot1d.bar1d(data, self, title='Density', ylabel=y_label,
-                                    filled=filled, fill_scheme=fill_scheme, grid=grid, **kwargs)
-            plt.show()
+            plot, ax = plot1d.bar1d(data, self, 'Density', y_label, filled, fill_scheme,
+                                    edgecolor, grid, *args, **kwargs)
         elif data_type == 'detector_geometry':
             title = 'Detector 1/{}'.format(data.shape[0])
             y_label = 'Intersection length, {}'.format(self.units)
-            plot, ax, _ = plot1d.detector_bar1d(data, self, title=title, ylabel=y_label,
-                                                filled=filled, fill_scheme=fill_scheme, grid=grid,  **kwargs)
-            plt.show()
+            plot, ax, _ = plot1d.detector_bar1d(data, self, title, y_label, filled,
+                                                fill_scheme, edgecolor, grid, *args, **kwargs)
         else:
             raise AttributeError('data type {} is unknown'.format(data_type))
+        plt.show()
         return plot, ax
 
-        return 1, 1
-    def to2d(self, axis2):
+    def plot2d(self, data, axis2, data_type='solution', filled=True,
+               fill_scheme='viridis', edgecolor='black', grid=False, *args, **kwargs):
         """
 
         :param axis2:
         :return:
         """
-        pass
+        if data_type == 'solution':
+            title = r"Density, {}{}{}{}".format(self.units, '$^{-1}$', axis2.units, '$^{-1}$')
+            plot, ax = plot2d.colormesh2d(data, self, axis2, title, fill_scheme, grid, *args,  **kwargs)
+        elif data_type == 'detector_geometry':
+            title = 'Detector 1/{}'.format(data.shape[0])
+            y_label = 'Intersection length, {}'.format(self.units)
+            plot, ax, _ = plot1d.detector_bar1d(data, self, title, y_label, filled,
+                                                fill_scheme, edgecolor, grid, *args, **kwargs)
+        else:
+            raise AttributeError('data type {} is unknown'.format(data_type))
+        if type(axis2) is not Axis1d:
+            raise NotImplementedError("2D plots with such combination of axes are not supported.")
+
+        plt.show()
+        return plot, ax

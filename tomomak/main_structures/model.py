@@ -121,7 +121,8 @@ class Model:
             data = self._detector_geometry
         else:
             raise AttributeError("data type {} is unknown".format(data_type))
-        self._mesh.plot1d(data, index, data_type,  **kwargs)
+        plot, ax = self._mesh.plot1d(data, index, data_type,  **kwargs)
+        return plot, ax
 
     def plot2d(self, index=0, data_type="solution", **kwargs):
         if data_type == "solution":
@@ -130,4 +131,5 @@ class Model:
             data = self._detector_geometry
         else:
             raise AttributeError("data type {} is unknown".format(data_type))
-        self._mesh.plot2d(data, index, data_type,  **kwargs)
+        plot, ax = self._mesh.plot2d(data, index, data_type,  **kwargs)
+        return plot, ax

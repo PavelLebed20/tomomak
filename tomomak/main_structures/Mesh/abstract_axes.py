@@ -1,18 +1,15 @@
 from abc import ABC, abstractmethod
 
 
-class Abstract1dAxis(ABC):
+class AbstractAxis(ABC):
 
     def __init__(self, name="", units=""):
         self.name = name
         self.units = units
 
     @property
-    def dimension(self):
-        return 1
-
     @abstractmethod
-    def plot1d(self, data, *args, **kwargs):
+    def dimension(self):
         """
 
         :return:
@@ -68,11 +65,39 @@ class Abstract1dAxis(ABC):
         :return:
         """
 
+
+class Abstract1dAxis(AbstractAxis):
+
+    @property
+    def dimension(self):
+        return 1
+
     @abstractmethod
-    def to2d(self, axis2):
+    def plot1d(self, data, *args, **kwargs):
         """
 
-        :param axis2:
+        :return:
+        """
+
+    # @abstractmethod
+    # def to2d(self, axis2):
+    #     """
+    #
+    #     :param axis2:
+    #     :return:
+    #     """
+
+
+class Abstract2dAxis(AbstractAxis):
+
+    @property
+    def dimension(self):
+        return 2
+
+    @abstractmethod
+    def plot2d(self, data, *args, **kwargs):
+        """
+
         :return:
         """
 
