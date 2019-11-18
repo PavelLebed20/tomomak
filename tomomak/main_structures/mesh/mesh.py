@@ -3,11 +3,24 @@ from tomomak.calc import multiply
 
 
 class Mesh:
-    """
+    """mesh, containing all coordinate axes.
 
-    """
+        mesh is a top-level container for all coordinate axes. It is one of the core TOMOMAK structures.
+        Allows integration and summation over needed axes and prepares solution and detector_geometry data for plotting.
+        Usually used as part of the Model in order to allow binding to the real-world coordinates
+        and hence visualisation, generation of detector geometry or test and apriori objects.
+        mesh doesn't have public attributes. Access to data is provided via properties.
+        One axis always corresponds to one dimension in solution and detector_geometry arrays,
+        however it may correspond to several dimensions in the real world coordinates.
+        """
 
-    def __init__(self, axes):
+    def __init__(self, axes=()):
+        """Constructor requires only list of coordinate axes. Later axes may be added or removed.
+
+        Args:
+            axes(tuple of tomomak axes, optional): Tuple of 1D, 2D or 3D axes.
+                The order of the axes will be preserved. default: ().
+        """
         self._axes = []
         self._dimension = 0
         for axis in axes:
@@ -21,14 +34,25 @@ class Mesh:
 
     @property
     def dimension(self):
+        """int: Number of mesh dimensions.
+
+        Note that number of axes may be smaller than number of dimensions,
+        since axis is allowed to represent more than one dimension.
+        """
         return self._dimension
 
     @property
     def axes(self):
+        """list of tomomak axes: mesh axes.
+        """
         return self._axes
 
     @property
     def shape(self):
+        """tuple of ints: tuple of each axis dimensions.
+
+        In the Model this parameter is also equal to the shape of solution.
+        """
         return tuple([ax.size for ax in self.axes])
 
     def add_axis(self, axis):
@@ -44,19 +68,26 @@ class Mesh:
         where dv is length/surface/volume of a cell.
 
         Args:
-            data (numpy.array):
-            index (int/list of int):
-            integrate_type (string):
+            data (numpy.array): Array to integrate.
+            index (int/list of int): Index or list of indexes of ndarray dimension to integrate over.
+            integrate_type ('integrate', 'sum'): Type of integration.
+                'integrate': calculates sum of data * dv. Used for solution integration.
+                'sum': returns sum over one dimension. Used for detector_geometry integration.
 
         Returns:
-            numpy.array: Integrated or summed array
+            numpy.array: Integrated or summed array.
+        Raises:
+            AttributeError: if integration type is unknown.
         """
+
+        if integrate_type not in ['integrate', 'sum']:
+            raise AttributeError('Integration type is unknown.')
         if isinstance(index, int):
             index = [index]
         axis_shift = 0
         for i in index:
             axis = i + axis_shift
-            if integrate_type != 'sum':
+            if integrate_type == 'integrate':
                 dv = self.axes[i].volumes
                 data = multiply.multiply_along_axis(data, dv, axis)
             data = np.sum(data, axis)
@@ -84,7 +115,10 @@ class Mesh:
         if data_type == 'solution':
             new_data = self.integrate_other(data, index)
         elif data_type == 'detector_geometry':
-            new_data = np.zeros([data.shape[0], data.shape[index+1]])
+            shape = [data.shape[0]]
+            for i in index:
+                shape.append(data.shape[i + 1])
+            new_data = np.zeros(shape)
             for i, d in enumerate(data):
                 new_data[i] = self.sum_other(d, index)
         else:
@@ -92,8 +126,10 @@ class Mesh:
         return new_data
 
     def plot1d(self, data, index=0, data_type='solution', *args, **kwargs):
+        if isinstance(index, int):
+            index = [index]
         new_data = self._prepare_data(data, index, data_type)
-        plot, ax = self._axes[index].plot1d(new_data, data_type, *args, **kwargs)
+        plot, ax = self._axes[index[0]].plot1d(new_data, data_type, *args, **kwargs)
         return plot, ax
 
     def plot2d(self, data, index=0, data_type='solution', *args, **kwargs):
@@ -110,10 +146,10 @@ class Mesh:
         # try to draw using 2 axes
         new_data = self._prepare_data(data, index, data_type)
         try:
-            plot, ax = self._axes[index[0]].plot2d(new_data, self._axes[index[1]], *args, **kwargs)
+            plot, ax = self._axes[index[0]].plot2d(new_data, self._axes[index[1]], data_type, *args, **kwargs)
         except (AttributeError, NotImplementedError):
             new_data = new_data.transpose()
-            plot, ax = self._axes[index[1]].plot2d(new_data, self._axes[index[0]], *args, **kwargs)
+            plot, ax = self._axes[index[1]].plot2d(new_data, self._axes[index[0]], data_type, *args, **kwargs)
         return plot, ax
 
     def plot3d(self, data, index=0, *args, **kwargs):

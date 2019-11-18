@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tomomak.plots import plot1d, plot2d
 import warnings
+from colorama import Fore
 
 
 class Axis1d(abstract_axes.Abstract1dAxis):
@@ -95,7 +96,7 @@ class Axis1d(abstract_axes.Abstract1dAxis):
             return False
 
     def plot1d(self, data, data_type='solution', filled=True,
-               fill_scheme='viridis', edgecolor='black', grid=False, *args, **kwargs):
+               fill_scheme='viridis', edgecolor='black', grid=False, equal_norm=False, *args, **kwargs):
         """
 
         :return:
@@ -108,31 +109,27 @@ class Axis1d(abstract_axes.Abstract1dAxis):
             title = 'Detector 1/{}'.format(data.shape[0])
             y_label = 'Intersection length, {}'.format(self.units)
             plot, ax, _ = plot1d.detector_bar1d(data, self, title, y_label, filled,
-                                                fill_scheme, edgecolor, grid, *args, **kwargs)
+                                                fill_scheme, edgecolor, grid, equal_norm, *args, **kwargs)
         else:
             raise AttributeError('data type {} is unknown'.format(data_type))
         plt.show()
         return plot, ax
 
-    def plot2d(self, data, axis2, data_type='solution', filled=True,
-               fill_scheme='viridis', edgecolor='black', grid=False, *args, **kwargs):
+    def plot2d(self, data, axis2, data_type='solution',
+               fill_scheme='viridis',  grid=False, equal_norm=False, *args, **kwargs):
         """
 
-        :param axis2:
-        :return:
         """
-        if data_type == 'solution':
-            title = r"Density, {}{}{}{}".format(self.units, '$^{-1}$', axis2.units, '$^{-1}$')
-            plot, ax = plot2d.colormesh2d(data, self, axis2, title, fill_scheme, grid, *args,  **kwargs)
-        elif data_type == 'detector_geometry':
-            title = 'Detector 1/{}'.format(data.shape[0])
-            y_label = 'Intersection length, {}'.format(self.units)
-            plot, ax, _ = plot1d.detector_bar1d(data, self, title, y_label, filled,
-                                                fill_scheme, edgecolor, grid, *args, **kwargs)
-        else:
-            raise AttributeError('data type {} is unknown'.format(data_type))
         if type(axis2) is not Axis1d:
             raise NotImplementedError("2D plots with such combination of axes are not supported.")
-
+        if data_type == 'solution':
+            title = r"Density, {}{}{}{}".format(self.units, '$^{-1}$', axis2.units, '$^{-1}$')
+            plot, ax, fig, cb = plot2d.colormesh2d(data, self, axis2, title, fill_scheme, grid, *args,  **kwargs)
+        elif data_type == 'detector_geometry':
+            title = 'Detector 1/{}'.format(data.shape[0])
+            plot, ax, _ = plot2d.detector_colormesh2d(data, self, axis2, title, fill_scheme, grid,
+                                                      equal_norm, *args, **kwargs)
+        else:
+            raise AttributeError('data type {} is unknown'.format(data_type))
         plt.show()
         return plot, ax

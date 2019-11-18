@@ -3,6 +3,7 @@ import numbers
 
 class Model:
     """
+    Main TOMOMAK structure.
     1 axis = 1 solution array dimension
     """
 
@@ -25,10 +26,12 @@ class Model:
         res += n_det
         if self.detector_geometry is not None:
             n_cells = str(self.detector_geometry[0].size)
+        elif self._solution is not None:
+            n_cells = str(self._solution.size)
         elif self._mesh is not None:
-            n_cells = 0
-            for n in self._mesh:
-                n_cells += n.size
+            n_cells = 1
+            for n in self._mesh.axes:
+                n_cells *= n.size
             n_cells = str(n_cells)
         else:
             n_cells = notdef
@@ -103,16 +106,18 @@ class Model:
                                     "detector_geometry[0] shape is {}; solution shape is {}."
                                     .format(self._detector_geometry[0].shape, self._solution.shape))
         if self._mesh is not None:
-            for val, name in zip([self.detector_geometry[0], self.solution], ["detector_geometry", "solution"]):
-                if val is not None:
-                    # if self.mesh.dimension != len(val.shape):
-                    #     raise Exception("Mesh dimension is inconsistent with {}. Mesh is {}-D while {} is {}-D."
-                    #                     .format(name, self.mesh.dimension, name, len(val.shape)))
-                    if self.mesh.shape != val.shape:
-                        raise Exception("Mesh shape is inconsistent with {}. Mesh shape is {} while {} is {}."
-                                        .format(name, self.mesh.shape, name, val.shape))
-
-
+            def check_shapes(val, name):
+                if self.mesh.shape != val.shape:
+                    raise Exception("mesh shape is inconsistent with {}. mesh shape is {} while {} is {}."
+                                    .format(name, self.mesh.shape, name, val.shape))
+            if self.detector_geometry is not None:
+                val = self.detector_geometry[0]
+                name = "detector_geometry"
+                check_shapes(val, name)
+            if self.solution is not None:
+                val = self.solution
+                name =  "solution"
+                check_shapes(val, name)
 
     def plot1d(self, index=0, data_type="solution", **kwargs):
         if data_type == "solution":
