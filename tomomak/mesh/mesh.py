@@ -3,7 +3,7 @@ from tomomak.calc import multiply
 
 
 class Mesh:
-    """mesh, containing all coordinate axes.
+    """Mesh, containing all coordinate axes.
 
         mesh is a top-level container for all coordinate axes. It is one of the core TOMOMAK structures.
         Allows integration and summation over needed axes and prepares solution and detector_geometry data for plotting.
