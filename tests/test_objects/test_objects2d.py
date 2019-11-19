@@ -1,6 +1,5 @@
 from tomomak.test_objects import objects2d
-from tomomak.main_structures.mesh.cartesian import *
-from tomomak.main_structures.mesh.mesh import *
+from tomomak.mesh.cartesian import *
 import inspect
 import unittest
 

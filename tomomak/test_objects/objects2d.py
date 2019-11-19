@@ -5,7 +5,7 @@ Synthetic object are usually used to test different tomomak components.
 import numpy as np
 from shapely.geometry import Polygon, Point
 import shapely.affinity
-from tomomak.main_structures.mesh.cartesian import Axis1d
+from tomomak.mesh.cartesian import Axis1d
 
 
 def polygon(mesh, points=((0, 0), (5, 5), (10, 0)), density=1):
@@ -125,7 +125,7 @@ def pyramid(mesh, center=(0, 0), size=(10, 10), height=1):
     return rect * mask
 
 
-def cone(mesh, center=(3, 4), ax_len=(4, 3), height=1, resolution=32):
+def cone(mesh, center=(3, 4), ax_len=(4, 3), height=1, cone_type='cone', resolution=32):
     """Create solution array, representing  2d ellipse defined by specified parameters
         with density changing as height of the elliptical cone .
 
@@ -138,6 +138,7 @@ def cone(mesh, center=(3, 4), ax_len=(4, 3), height=1, resolution=32):
         ax_len (tuple of int, optional): Half-width and Half-height of the base ellipse,
             given by tuples with 2 elements (a, b). default: (5, 5).
         height(float, optional): Cone max height. Minimum height is 0. default: 1
+        cone_type(str, {'cone', 'paraboloid', 'paraboloid_h'}, optional): Shape of cone.
         resolution(integer, optional): Relative number of points, approximating base ellipse. default: 32.
 
     Returns:
@@ -145,6 +146,7 @@ def cone(mesh, center=(3, 4), ax_len=(4, 3), height=1, resolution=32):
 
     Raises:
         TypeError if one of the axes is not  cartesian (tomomak.main_structures.mesh.cartesian).
+        TypeError if cone type is unknown.
     """
     ell = ellipse(mesh, center, ax_len, height, resolution)
     mask = np.zeros(ell.shape)
@@ -152,7 +154,21 @@ def cone(mesh, center=(3, 4), ax_len=(4, 3), height=1, resolution=32):
     for i, row in enumerate(mask):
         for j, _ in enumerate(row):
             cell_coord = [coord[0][i], coord[1][j]]
-            mask[i, j] = 1 - np.sqrt(np.abs((cell_coord[0] - center[0]) / (ax_len[0]))**2 + np.abs(
-                (cell_coord[1] - center[1]) / (ax_len[1]))**2)
+            if cone_type == 'cone':
+                k = np.sqrt(1 / (np.abs((cell_coord[0] - center[0]) ** 2 / (ax_len[0]))
+                                 + np.abs((cell_coord[1] - center[1]) ** 2 / (ax_len[1]))))
+                if k == 0:
+                    mask[i, j] = 1
+                else:
+                    h = (k - 1) / k
+                    mask[i, j] = h
+            elif cone_type == 'paraboloid_h':
+                mask[i, j] = 1 - np.abs((cell_coord[0] - center[0]) ** 2 / (ax_len[0])) + np.abs(
+                    (cell_coord[1] - center[1]) ** 2 / (ax_len[1]))
+            elif cone_type == 'paraboloid':
+                mask[i, j] = 1 - np.sqrt(np.abs((cell_coord[0] - center[0]) / (ax_len[0]))**2 + np.abs(
+                    (cell_coord[1] - center[1]) / (ax_len[1]))**2)
+            else:
+                raise TypeError("Unknown cone type. Correct types are 'cone', 'paraboloid', 'paraboloid_h'.")
     mask = mask.clip(min=0)
     return ell * mask

@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tomomak.plots import plot1d, plot2d
 import warnings
-from colorama import Fore
 
 
 class Axis1d(abstract_axes.Abstract1dAxis):
