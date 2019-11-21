@@ -64,7 +64,7 @@ class Axis1d(abstract_axes.Abstract1dAxis):
             ax_type = 'regular'
         else:
             ax_type = 'irregular'
-        return "{}D {} axis with {} cells. Name: {}. Boundaries: {} {}. "\
+        return "{}D {} axis with {} cells. Name: {}. Boundaries: {} {}. " \
             .format(self.dimension, ax_type, self.size, self.name, self._boundaries, self.units)
 
     @property
@@ -94,6 +94,19 @@ class Axis1d(abstract_axes.Abstract1dAxis):
         else:
             return False
 
+    def cell_edges2d(self, axis2):
+        if type(axis2) is not Axis1d:
+            raise NotImplementedError("Cell edges with such combination of axes are not supported.")
+        shape = (self.size, axis2.size)
+        res = np.zeros(shape).tolist()
+        edge1 = self.cell_edges
+        edge2 = axis2.cell_edges
+        for i, row in enumerate(res):
+            for j, _ in enumerate(row):
+                res[i][j] = ([(edge1[i], edge2[j]), (edge1[i + 1], edge2[j]),
+                              (edge1[i + 1], edge2[j + 1]), (edge1[i], edge2[j + 1])])
+        return res
+
     def plot1d(self, data, data_type='solution', filled=True,
                fill_scheme='viridis', edgecolor='black', grid=False, equal_norm=False, *args, **kwargs):
         """
@@ -115,7 +128,7 @@ class Axis1d(abstract_axes.Abstract1dAxis):
         return plot, ax
 
     def plot2d(self, data, axis2, data_type='solution',
-               fill_scheme='viridis',  grid=False, equal_norm=False, *args, **kwargs):
+               fill_scheme='viridis', grid=False, equal_norm=False, *args, **kwargs):
         """
 
         """
@@ -123,7 +136,7 @@ class Axis1d(abstract_axes.Abstract1dAxis):
             raise NotImplementedError("2D plots with such combination of axes are not supported.")
         if data_type == 'solution':
             title = r"Density, {}{}{}{}".format(self.units, '$^{-1}$', axis2.units, '$^{-1}$')
-            plot, ax, fig, cb = plot2d.colormesh2d(data, self, axis2, title, fill_scheme, grid, *args,  **kwargs)
+            plot, ax, fig, cb = plot2d.colormesh2d(data, self, axis2, title, fill_scheme, grid, *args, **kwargs)
         elif data_type == 'detector_geometry':
             title = 'Detector 1/{}'.format(data.shape[0])
             plot, ax, _ = plot2d.detector_colormesh2d(data, self, axis2, title, fill_scheme, grid,

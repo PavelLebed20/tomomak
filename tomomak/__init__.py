@@ -1,4 +1,4 @@
-import tomomak.calc as calc
+import tomomak.util as calc
 
 
 __all__ = ['calc']

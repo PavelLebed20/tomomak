@@ -14,6 +14,31 @@ class Model:
         self._mesh = mesh
         self._check_self_consistency()
 
+    @property
+    def shape(self):
+        if self.detector_geometry is not None:
+            shape = self.detector_geometry[0].shape
+        elif self._solution is not None:
+            shape = self._solution.shape
+        elif self._mesh is not None:
+            shape = []
+            for n in self._mesh.axes:
+                shape. append(n.size)
+        else:
+            shape = None
+        return tuple(shape)
+
+    @property
+    def size(self):
+        shape = self.shape
+        if shape is not None:
+            size = 1
+            for s in shape:
+                size *= s
+        else:
+            size = None
+        return size
+
     def __str__(self):
         notdef = "Not defined."
         res = "Model description:\nNumber of detectors: "
@@ -24,17 +49,11 @@ class Model:
         else:
             n_det = notdef
         res += n_det
-        if self.detector_geometry is not None:
-            n_cells = str(self.detector_geometry[0].size)
-        elif self._solution is not None:
-            n_cells = str(self._solution.size)
-        elif self._mesh is not None:
-            n_cells = 1
-            for n in self._mesh.axes:
-                n_cells *= n.size
-            n_cells = str(n_cells)
-        else:
+        n_cells = self.size
+        if n_cells is None:
             n_cells = notdef
+        else:
+            n_cells = str(n_cells)
         res += "\nNumber of cells: {}\nMesh:\n".format(n_cells)
         if self._mesh is not None:
             mesh = str(self._mesh)

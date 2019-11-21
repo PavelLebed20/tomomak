@@ -1,6 +1,7 @@
 """Module, defining transformation pipeline class and abstract transformer.
 """
 from abc import ABC, abstractmethod
+import warnings
 
 
 class Pipeline:
@@ -9,8 +10,10 @@ class Pipeline:
         Pipeline is a top-level container for all transforms. It is one of the core TOMOMAK structures.
         Pipeline is usually used to perform a number of transformations before calculation of the solution
         and inverse transformation after solution is obtained.
-        Object can be used as a transformer if it implements forward() and backward() methods
-        and is able to store Model object. Model should be changed inside of these methods.
+
+        Object can be used as a transformer if it implements forward(Model) and backward(Model) methods.
+        Model should be changed inside of these methods.
+        Abstract class AbstractTransformer may be used as superclass for transformer.
         """
 
     def __init__(self, model, transformers=()):
@@ -34,22 +37,29 @@ class Pipeline:
         del self._transformers[index]
         self._len -= 1
 
-    def forward(self, steps=1):
-        if steps < 0:
+    def _check_forward(self, steps, forward=True, type_text='perform transformation'):
+        if steps <= 0:
             raise TypeError("Number of steps should be positive.")
-        if self._position + steps > self._len + 1:
-            raise Exception("Unable to perform transformation since final index is out of range.")
+        raiser = 0
+        if forward:
+            if self._position + steps > self._len + 1:
+                raiser = 1
+        else:
+            if self._position - steps < 0:
+                raiser = 1
+        if raiser:
+            raise Exception("Unable to {} since final index is out of range.".format(type_text))
+
+    def forward(self, steps=1):
+        self.__check_forward(steps,forward=True, type_text='perform transformation')
         for i in range(steps):
-            self._transformers[self._position].forward()
+            self._transformers[self._position].forward(self._model)
             self._position += 1
 
     def backward(self, steps=1):
-        if steps < 0:
-            raise TypeError("Number of steps should be positive.")
-        if self._position - steps < 0:
-            raise Exception("Unable to perform transformation since final index is out of range.")
+        self.__check_forward(steps, forward=False, type_text='perform transformation')
         for i in range(steps):
-            self._transformers[self._position - 1].backward()
+            self._transformers[self._position - 1].backward(self._model)
             self._position -= 1
 
     def to_last(self):
@@ -60,22 +70,31 @@ class Pipeline:
         steps = self._position
         self.backward(steps)
 
+    def skip_forward(self, steps=1):
+        self.__check_forward(steps, forward=True, type_text='skip')
+        self.position += steps
+        warnings.warn("{} steps in the pipeline were skipped forward. "
+                      "This may lead to unpredictable results.".format(steps))
+
+    def skip_backward(self, steps=1):
+        self.__check_forward(steps, forward=False, type_text='skip')
+        self.position -= steps
+        warnings.warn("{} steps in the pipeline were skipped backward."
+                      " This may lead to unpredictable results.".format(steps))
 
 class AbstractTransformer(ABC):
     """
     
     """
-    def __init__(self, model):
-        self.model = model
 
     @abstractmethod
-    def forward(self):
+    def forward(self, model):
         """
 
         """
 
     @abstractmethod
-    def backward(self):
+    def backward(self, model):
         """
 
         """

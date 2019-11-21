@@ -1,5 +1,5 @@
 import numpy as np
-from tomomak.calc import multiply
+from tomomak.util import array_routines
 
 
 class Mesh:
@@ -89,7 +89,7 @@ class Mesh:
             axis = i + axis_shift
             if integrate_type == 'integrate':
                 dv = self.axes[i].volumes
-                data = multiply.multiply_along_axis(data, dv, axis)
+                data = array_routines.multiply_along_axis(data, dv, axis)
             data = np.sum(data, axis)
             axis_shift -= 1
         return data
