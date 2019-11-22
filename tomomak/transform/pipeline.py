@@ -11,25 +11,37 @@ class Pipeline:
         Pipeline is usually used to perform a number of transformations before calculation of the solution
         and inverse transformation after solution is obtained.
 
-        Object can be used as a transformer if it implements forward(Model) and backward(Model) methods.
+        Object can be used as a transformer if it implements __call()__ method.
         Model should be changed inside of these methods.
+        It should also store information in order to perform inverse transform on the next call.
         Abstract class AbstractTransformer may be used as superclass for transformer.
+        See examples.
         """
 
-    def __init__(self, model, transformers=()):
+    def __init__(self, model, transformers=(), names=None):
         self._model = model
         self._position = 0
         self._len = 0
         self._transformers = []
-        for t in transformers:
+        self._names = []
+        for i, t in enumerate(transformers):
             self._len += 1
-            self._transformers.append(t)
+            if names is None:
+                self._transformers.append(t)
+            else:
+                self._transformers.append(t, names[i])
 
     @property
     def position(self):
         return self._position
 
-    def add_transform(self, transformer):
+    @property
+    def transformers(self):
+        return self._names
+
+    def add_transform(self, transformer, name=None):
+        if name is None:
+            name = 'Transformer ' + str(len(self._transformers))
         self._transformers.append(transformer)
         self._len += 1
 
@@ -51,15 +63,15 @@ class Pipeline:
             raise Exception("Unable to {} since final index is out of range.".format(type_text))
 
     def forward(self, steps=1):
-        self.__check_forward(steps,forward=True, type_text='perform transformation')
+        self._check_forward(steps,forward=True, type_text='perform transformation')
         for i in range(steps):
-            self._transformers[self._position].forward(self._model)
+            self._transformers[self._position](self._model)
             self._position += 1
 
     def backward(self, steps=1):
-        self.__check_forward(steps, forward=False, type_text='perform transformation')
+        self._check_forward(steps, forward=False, type_text='perform transformation')
         for i in range(steps):
-            self._transformers[self._position - 1].backward(self._model)
+            self._transformers[self._position - 1](self._model)
             self._position -= 1
 
     def to_last(self):
@@ -70,31 +82,16 @@ class Pipeline:
         steps = self._position
         self.backward(steps)
 
-    def skip_forward(self, steps=1):
+    def _skip_forward(self, steps=1):
         self.__check_forward(steps, forward=True, type_text='skip')
         self.position += steps
-        warnings.warn("{} steps in the pipeline were skipped forward. "
+        warnings.warn("{} step(s) in the pipeline were skipped forward. "
                       "This may lead to unpredictable results.".format(steps))
 
-    def skip_backward(self, steps=1):
+    def _skip_backward(self, steps=1):
         self.__check_forward(steps, forward=False, type_text='skip')
         self.position -= steps
-        warnings.warn("{} steps in the pipeline were skipped backward."
+        warnings.warn("{} step(s) in the pipeline were skipped backward."
                       " This may lead to unpredictable results.".format(steps))
 
-class AbstractTransformer(ABC):
-    """
-    
-    """
 
-    @abstractmethod
-    def forward(self, model):
-        """
-
-        """
-
-    @abstractmethod
-    def backward(self, model):
-        """
-
-        """

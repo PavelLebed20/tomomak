@@ -33,13 +33,6 @@ class AbstractAxis(ABC):
 
         """
 
-    @property
-    @abstractmethod
-    def boundaries(self):
-        """
-
-        :return:
-        """
 
     @property
     @abstractmethod

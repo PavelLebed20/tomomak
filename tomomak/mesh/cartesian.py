@@ -6,9 +6,19 @@ import warnings
 
 
 class Axis1d(abstract_axes.Abstract1dAxis):
-    def __init__(self, coordinates=None, lower_limit=0, upper_limit=None, size=None, name="", units=""):
+    def __init__(self, coordinates=None, edges=None, lower_limit=0, upper_limit=None, size=None, name="", units=""):
         super().__init__(name, units)
-        if coordinates is None:
+        if coordinates is not None:
+            if size is not None or upper_limit is not None:
+                warnings.warn("Since coordinates are given explicitly, size and upper_limit arguments are ignored.")
+            if edges is not None:
+                warnings.warn("Since coordinates are given explicitly, edges are ignored.")
+            self._create_using_coordinates(coordinates, lower_limit)
+        elif edges is not None:
+            if size is not None or upper_limit is not None:
+                warnings.warn("Since coordinates are given explicitly, size and upper_limit arguments are ignored.")
+            self._create_using_edges(edges)
+        else:
             if size is None:
                 warnings.warn("Axis1d init: size was not set. Default size = 10 is used.")
                 size = 10
@@ -16,18 +26,21 @@ class Axis1d(abstract_axes.Abstract1dAxis):
                 warnings.warn("Axis1d init: upper_limit  was not set. Default upper_limit = 10 is used.")
                 upper_limit = 10
             self._create_using_limits(lower_limit, upper_limit, size)
-        else:
-            if size is not None or upper_limit is not None:
-                warnings.warn("Since coordinates are given explicitly, size and upper_limit arguments are ignored.")
-            self._create_using_coordinates(coordinates, lower_limit)
+
+    def _create_using_edges(self, edges):
+        coordinates = np.zeros(len(edges) - 1)
+        for i, _ in enumerate(coordinates):
+            coordinates[i] = (edges[i] + edges[i + 1]) / 2
+        self._create_using_coordinates(coordinates, edges[0])
+        self._cell_edges[0], self._cell_edges[-1] = edges[0], edges[-1]
 
     def _create_using_limits(self, lower_limit, upper_limit, size):
         self._size = size
-        self._boundaries = [lower_limit, upper_limit]
         dv = np.abs(upper_limit - lower_limit) / size
         self._volumes = np.full(size, dv)
         self._coordinates = np.fromfunction(lambda i: lower_limit + (i * dv) + (dv / 2), (size,))
-        self._calc_cell_edges()
+        self._calc_cell_edges(lower_limit)
+        self._cell_edges[-1] = upper_limit
 
     def _create_using_coordinates(self, coordinates, lower_limit):
         if (any(np.diff(coordinates)) < 0 and coordinates[-1] > lower_limit
@@ -46,15 +59,13 @@ class Axis1d(abstract_axes.Abstract1dAxis):
             self._volumes[i + 1] = 2 * dv[i] - self._volumes[i]
         for i, v in enumerate(self._volumes):
             if v <= 0:
-                raise Exception("{} point of the coordinates is inside of previous segment. "
+                raise Exception("Point № {} of the coordinates is inside of the previous segment. "
                                 "Increase the distance between the points.".format(i))
-        upper_limit = coordinates[-1] + self.volumes[-1] / 2
-        self._boundaries = [lower_limit, upper_limit]
-        self._calc_cell_edges()
+        self._calc_cell_edges(lower_limit)
 
-    def _calc_cell_edges(self):
+    def _calc_cell_edges(self, lower_limit):
         self._cell_edges = np.zeros(self.size + 1)
-        self._cell_edges[0] = self.boundaries[0]
+        self._cell_edges[0] = lower_limit
         for i in range(self.size):
             self._cell_edges[i + 1] = self._volumes[i] + self._cell_edges[i]
         return self._cell_edges
@@ -65,7 +76,8 @@ class Axis1d(abstract_axes.Abstract1dAxis):
         else:
             ax_type = 'irregular'
         return "{}D {} axis with {} cells. Name: {}. Boundaries: {} {}. " \
-            .format(self.dimension, ax_type, self.size, self.name, self._boundaries, self.units)
+            .format(self.dimension, ax_type, self.size, self.name,
+                    [self._cell_edges[0], self._cell_edges[-1]], self.units)
 
     @property
     def volumes(self):
@@ -74,10 +86,6 @@ class Axis1d(abstract_axes.Abstract1dAxis):
     @property
     def coordinates(self):
         return self._coordinates
-
-    @property
-    def boundaries(self):
-        return self._boundaries
 
     @property
     def cell_edges(self):
@@ -106,6 +114,36 @@ class Axis1d(abstract_axes.Abstract1dAxis):
                 res[i][j] = ([(edge1[i], edge2[j]), (edge1[i + 1], edge2[j]),
                               (edge1[i + 1], edge2[j + 1]), (edge1[i], edge2[j + 1])])
         return res
+
+    def intersection(self, axis2):
+        """Intersection of each cell with each cell of another axis as 2D array.
+
+        Args:
+            axis2:
+
+        Returns:
+
+        """
+        if type(axis2) is not Axis1d:
+            raise TypeError("Cell edges with such combination of axes are not supported.")
+
+        intersection = np.zeros([self.size, axis2.size])
+
+        def inters_len(a_min, a_max, b_min, b_max):
+            res = min(a_max, b_max) - max(a_min, b_min)
+            if res < 0:
+                res = 0
+            return res
+        j_start = 0
+        for i, row in enumerate(intersection):
+            for j in range(j_start, len(row)):
+                dist = inters_len(self.cell_edges[i], self.cell_edges[i + 1],
+                                  axis2.cell_edges[j], axis2.cell_edges[j + 1])
+                if not dist and j != j_start:
+                    j_start = j-1
+                    break
+                intersection[i, j] = dist
+        return intersection
 
     def plot1d(self, data, data_type='solution', filled=True,
                fill_scheme='viridis', edgecolor='black', grid=False, equal_norm=False, *args, **kwargs):

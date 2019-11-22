@@ -55,8 +55,10 @@ class Mesh:
         """
         return tuple([ax.size for ax in self.axes])
 
-    def add_axis(self, axis):
-        self._axes.append(axis)
+    def add_axis(self, axis, index=None):
+        if index is None:
+            index = len(self._axes)
+        self._axes.insert(index, axis)
         self._dimension += axis.dimension
 
     def remove_axis(self, index=-1):

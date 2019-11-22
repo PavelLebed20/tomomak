@@ -231,4 +231,3 @@ def cone(mesh, center=(3, 4), ax_len=(4, 3), index=(0, 1), height=1, cone_type='
     if broadcast:
         res = tomomak.util.array_routines.broadcast_object(res, index, mesh.shape)
     return res
-
