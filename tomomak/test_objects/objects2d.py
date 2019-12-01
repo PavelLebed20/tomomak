@@ -6,6 +6,7 @@ import numpy as np
 from shapely.geometry import Polygon, Point
 import shapely.affinity
 import tomomak.util.array_routines
+import tomomak.util.geometry
 
 
 def polygon(mesh, points=((0, 0), (5, 5), (10, 0)), index=(0, 1), density=1, broadcast=True):
@@ -13,8 +14,8 @@ def polygon(mesh, points=((0, 0), (5, 5), (10, 0)), index=(0, 1), density=1, bro
 
     If there are more than 2 dimension in model, broadcasting to other dimensions is performed.
     If broadcasting is not needed private method _polygon may be used.
-    Only axes which implements cell_edges2d method are supported are supported.
-    This method should  accept second axe and return 2d list of ordered sequence of point tuples for two 1d axes
+    Only axes which implements cell_edges2d method are supported.
+    cell_edges2d method should  accept second axe and return 2d list of ordered sequence of point tuples for two 1d axes
     or 1d list of ordered sequence of point tuples for one 2d axis.
     Each point tuple represents cell borders in the 2D cartesian coordinates.
     E.g. borders of the cell of two cartesian axes with edges (0,7) and (0,5)
@@ -26,7 +27,7 @@ def polygon(mesh, points=((0, 0), (5, 5), (10, 0)), index=(0, 1), density=1, bro
         points(An ordered sequence of point tuples, optional): Polygon points (x, y).
             default: ((0 ,0), (5, 5), (10, 0))
         index(tuple of two ints, optional): axes to build object at. Default:  (0,1)
-        density(float, optional): Object density. Default: 1.
+        density(float, optional): Object density. E.g. number of emitted particles per second in 4*pi. Default: 1.
         broadcast(bool, optional) If true, resulted array is broadcasted to fit Mesh shape.
             If False, 2d array is returned, even if Mesh is not 2D. Default: True.
 
@@ -36,8 +37,7 @@ def polygon(mesh, points=((0, 0), (5, 5), (10, 0)), index=(0, 1), density=1, bro
     Raises:
         TypeError if one of the axes is not  cartesian (tomomak.main_structures.mesh.cartesian).
     """
-    if isinstance(index, int):
-        index = [index]
+    res = tomomak.util.geometry.intersection_2d(mesh, points, density, index=(0, 1), norm_to='cell_area')
     pol = Polygon(points)
     # If axis is 2D
     if mesh.axes[index[0]].dimension == 2:
@@ -50,7 +50,8 @@ def polygon(mesh, points=((0, 0), (5, 5), (10, 0)), index=(0, 1), density=1, bro
                 cell = Polygon(cells[i])
                 res[i] = pol.intersection(cell).area
                 ds = cell.area
-                res[i] *= density / ds
+                res[i] /= ds
+            res *= density
             return res
         except (TypeError, AttributeError) as e:
             raise type(e)(e.message + "Custom axis should implement cell_edges method. "
@@ -77,10 +78,27 @@ def polygon(mesh, points=((0, 0), (5, 5), (10, 0)), index=(0, 1), density=1, bro
         for j, _ in enumerate(row):
             cell = Polygon(cells[i][j])
             res[i, j] = pol.intersection(cell).area
-            ds = cell.area
-            res[i, j] *= density / ds
+            res[i, j] *= multuplier
+            if norm_to is not None:
+                if norm_to == 0:
+                    ds = cell.area
+                elif norm_to == 1:
+                    ds = Point(distant_point).distance(Point(mesh.axes[i1].coordinates[i],
+                                                             mesh.axes[i2].coordinates[j]))
+                elif norm_to == 2:
+                    ds = Point(distant_point).distance(Point(mesh.axes[i1].coordinates[i],
+                                                             mesh.axes[i2].coordinates[j])) ** 2
+                res[i, j] /= ds
+
+    return res
+
+
+    res = tomomak.util.geometry.intersection_2d(mesh, points, density, index=(0, 1), norm_to='cell_area')
     if broadcast:
         res = tomomak.util.array_routines.broadcast_object(res, index, mesh.shape)
+
+
+
     return res
 
 
