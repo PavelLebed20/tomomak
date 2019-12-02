@@ -1,7 +1,7 @@
 """Routines to work with geometry
 """
 import numpy as np
-from shapely.geometry import Polygon
+import shapely.geometry
 
 
 def intersection_2d(mesh, points, index=(0, 1), calc_area=True):
@@ -33,7 +33,7 @@ def intersection_2d(mesh, points, index=(0, 1), calc_area=True):
     """
     if isinstance(index, int):
         index = [index]
-    pol = Polygon(points)
+    pol = shapely.geometry.Polygon(points)
     # If axis is 2D
     if mesh.axes[index[0]].dimension == 2:
         i1 = index[0]
@@ -42,7 +42,7 @@ def intersection_2d(mesh, points, index=(0, 1), calc_area=True):
             shape = (mesh.axes[i1].size,)
             res = np.zeros(shape)
             for i, row in enumerate(res):
-                cell = Polygon(cells[i])
+                cell = shapely.geometry.Polygon(cells[i])
                 if calc_area:
                     if pol.intersects(cell):
                         res[i] = pol.intersection(cell).area
@@ -74,7 +74,7 @@ def intersection_2d(mesh, points, index=(0, 1), calc_area=True):
     res = np.zeros(shape)
     for i, row in enumerate(res):
         for j, _ in enumerate(row):
-            cell = Polygon(cells[i][j])
+            cell = shapely.geometry.Polygon(cells[i][j])
             if calc_area:
                 if pol.intersects(cell):
                     res[i, j] = pol.intersection(cell).area
@@ -83,3 +83,73 @@ def intersection_2d(mesh, points, index=(0, 1), calc_area=True):
                 if inters:
                     res[i, j] = 1
     return res
+
+
+def cell_areas(mesh, index):
+    """Get area of each cell on 2D mesh.
+
+    Args:
+        mesh(tomomak.main_structures.Mesh): mesh to work with.
+        index(tuple of two ints, optional): axes to build object at. Default:  (0,1)
+
+    Returns:
+        ndarray: 2D or 1D ndarray with cell areas.
+
+    """
+
+    # If axis is 2D
+    if mesh.axes[index[0]].dimension == 2:
+        i1 = index[0]
+        shape = (mesh.axes[i1].size,)
+        ds = np.zeros(shape)
+        cells = mesh.axes[i1].cell_edges()
+        for i, row in enumerate(ds):
+            cell = shapely.geometry.Polygon(cells[i])
+            ds[i] = cell.area
+    # If axes are 1D
+    elif mesh.axes[0].dimension == 1:
+        i1 = index[0]
+        i2 = index[1]
+        shape = (mesh.axes[i1].size, mesh.axes[i2].size)
+        ds = np.zeros(shape)
+        try:
+            cells = mesh.axes[i1].cell_edges2d(mesh.axes[i2])
+        except (TypeError, AttributeError):
+            cells = mesh.axes[i2].cell_edges2d(mesh.axes[i1])
+        for i, row in enumerate(ds):
+            for j, _ in enumerate(row):
+                cell = shapely.geometry.Polygon(cells[i][j])
+                ds[i, j] = cell.area
+    return ds
+
+
+def cell_distances(mesh, index, p):
+    """Get distance to each cell on 2D mesh.
+
+    Args:
+        mesh(tomomak.main_structures.Mesh): mesh to work with.
+        index(tuple of two ints, optional): axes to calculate distance at. Default:  (0,1)
+
+    Returns:
+        ndarray: 2D or 1D ndarray with distances.
+        """
+    p1 = shapely.geometry.Point(p)
+    # If axis is 2D
+    if mesh.axes[index[0]].dimension == 2:
+        i1 = index[0]
+        shape = (mesh.axes[i1].size,)
+        r = np.zeros(shape)
+        for i, row in enumerate(r):
+            p2 = shapely.geometry.Point(mesh.axes[i1].coordinates[i])
+            r[i] = p1.distance(p2)
+    # If axes are 1D
+    elif mesh.axes[0].dimension == 1:
+        i1 = index[0]
+        i2 = index[1]
+        shape = (mesh.axes[i1].size, mesh.axes[i2].size)
+        r = np.zeros(shape)
+        for i, row in enumerate(r):
+            for j, _ in enumerate(row):
+                p2 = shapely.geometry.Point(mesh.axes[i1].coordinates[i], mesh.axes[i2].coordinates[j])
+                r[i, j] = p1.distance(p2)
+    return r

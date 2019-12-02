@@ -26,45 +26,23 @@ def polygon(mesh, points=((0, 0), (5, 5), (10, 0)), index=(0, 1), density=1, bro
         mesh(tomomak.main_structures.Mesh): mesh to work with.
         points(An ordered sequence of point tuples, optional): Polygon points (x, y).
             default: ((0 ,0), (5, 5), (10, 0))
-        index(tuple of two ints, optional): axes to build object at. Default:  (0,1)
+        index(tuple of two ints, optional): axes to build object at. Default: (0,1).
         density(float, optional): Object density. E.g. number of emitted particles per second in 4*pi. Default: 1.
         broadcast(bool, optional) If true, resulted array is broadcasted to fit Mesh shape.
             If False, 2d array is returned, even if Mesh is not 2D. Default: True.
 
     Returns:
-        ndarray: 2D numpy array, representing polygon on the given mesh.
+        ndarray:  numpy array, representing polygon on the given mesh.
 
     Raises:
         TypeError if one of the axes is not  cartesian (tomomak.main_structures.mesh.cartesian).
     """
     if isinstance(index, int):
         index = [index]
-    # Get intersection area
     res = tomomak.util.geometry2d.intersection_2d(mesh, points, index)
-    ds = np.ones_like(res)
-    # If axis is 2D
-    if mesh.axes[index[0]].dimension == 2:
-        i1 = index[0]
-        cells = mesh.axes[i1].cell_edges()
-        for i, row in enumerate(res):
-            if res[i]:
-                cell = shapely.geometry.Polygon(cells[i])
-                ds[i] = cell.area
-    # If axes are 1D
-    elif mesh.axes[0].dimension == 1:
-        i1 = index[0]
-        i2 = index[1]
-        try:
-            cells = mesh.axes[i1].cell_edges2d(mesh.axes[i2])
-        except (TypeError, AttributeError):
-            cells = mesh.axes[i2].cell_edges2d(mesh.axes[i1])
-        for i, row in enumerate(res):
-            for j, _ in enumerate(row):
-                if res[i, j]:
-                    cell = shapely.geometry.Polygon(cells[i][j])
-                    ds[i, j] = cell.area
-    res *= density
+    ds = tomomak.util.geometry2d.cell_areas(mesh, index)
     res /= ds
+    res *= density
     if broadcast:
         res = tomomak.util.array_routines.broadcast_object(res, index, mesh.shape)
     return res

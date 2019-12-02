@@ -78,7 +78,7 @@ def detector_colormesh2d(data, axis1, axis2, title='', fill_scheme='viridis',
             self.norm = normalization
 
         def redraw(self):
-            y_data = self.data[self.ind]
+            y_data = np.transpose(self.data[self.ind])
             plot.set_array(y_data.flatten())
             if self.norm is None:
                 normalization = colors.Normalize(np.min(y_data), np.max(y_data))

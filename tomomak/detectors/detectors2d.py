@@ -6,51 +6,37 @@ import tomomak.util.geometry2d
 import numpy as np
 
 
-def line2d(mesh, p1, p2, width, divergence, index=(0, 1), response=1, radius_dependence=True,
+def line2d(mesh, p1, p2, width, divergence=0, index=(0, 1), response=1, radius_dependence=True,
            broadcast=True, calc_area=True):
-    """
-        Source is isotropic.
+    """Generate intersection with one detector line with given parameters.
+
+    Source is isotropic.
+    Line length should be long enough to lay outside of mesh.
+
     Args:
-        mesh:
+        mesh(tomomak.main_structures.Mesh): mesh to work with.
         p1(tuple of 2 floats): Detector origin (x, y).
-        p2:
-        width:
-        divergence:
-        index:
+        p2(tuple of 2 floats): Second point, characterizing central axis of detector line.
+        width: width of line.
+        divergence: line of sight divergence. 0 means line is collimated. Default: 0.
+        index(tuple of two ints, optional): axes to build object at. Default: (0,1).
         response(float): Detector response = amplification * detector area.
             E.g. detector signal at 1m from source, emitting 4*pi particles at given time interval.
-        radius_dependence:
-        broadcast:
-        calc_area: =True
+        radius_dependence: if True, signal is divided by 4 *pi *r^2
+        broadcast(bool, optional) If true, resulted array is broadcasted to fit Mesh shape.
+            If False, 2d array is returned, even if Mesh is not 2D. Default: True.
+        calc_area(bool): If True, area of intersection with each cell is calculated, if False,
+            only fact of intersecting with mesh cell is taken into account. Default: True.
 
     Returns:
-
+         ndarray: numpy array, representing one detector on a given mesh.
     """
     points = _line_to_polygon(p1, p2, width, divergence)
     if isinstance(index, int):
         index = [index]
-    # Get intersection area
     res = tomomak.util.geometry2d.intersection_2d(mesh, points, index, calc_area)
-
     if radius_dependence:
-        r = np.ones_like(res)
-        p1 = shapely.geometry.Point(p1)
-        # If axis is 2D
-        if mesh.axes[index[0]].dimension == 2:
-            i1 = index[0]
-            for i, row in enumerate(res):
-                if res[i]:
-                    p2 = shapely.geometry.Point(mesh.axes[i1].coordinates[i])
-                    r[i] = p1.distance(p2)
-        # If axes are 1D
-        elif mesh.axes[0].dimension == 1:
-            i1 = index[0]
-            i2 = index[1]
-            for i, row in enumerate(res):
-                for j, _ in enumerate(row):
-                    if res[i, j]:
-                        p2 = shapely.geometry.Point(mesh.axes[i1].coordinates[i], mesh.axes[i2].coordinates[j])
-                        r[i, j] = p1.distance(p2)
+        r = tomomak.util.geometry2d.cell_distances(mesh, index, p1)
         r = 4 * np.pi * np.square(r)
         res /= r
     res *= response
@@ -59,91 +45,103 @@ def line2d(mesh, p1, p2, width, divergence, index=(0, 1), response=1, radius_dep
     return res
 
 
-# def fan_detector(mesh, position, number, width, incline, angle=np.pi, divergence=0,
-#                  index=(0, 1), response=1, radius_dependence=True, broadcast=True):
-#     """
-#
-#     Args:
-#         mesh:
-#         position:
-#         number:
-#         width:
-#         incline:
-#         angle:
-#         divergence:
-#         index:
-#         response:
-#         radius_dependence:
-#         broadcast:
-#
-#     Returns:
-#
-#     """
-#     """
-#     creates one fan of detectors
-#     line_num - number of sightlines
-#     N,M - grid size
-#     (note, that pixels are rectangular, i.e. the  ratio of the investigated area in the real world is N/M)
-#     N corresponds to x, M - to y, note that physycal coordinates and NumPy array coordinates are different
-#     width - width of one sightline
-#     angle - fan angle
-#     position - position of the fan vertex in radians
-#     (counter-clockwise, 0 is middle-right as cos-sin representation)
-#     shift - shift of the fan vertex in pixels
-#     incline - incline of the fan from the center in radians
-#     weighted - if False, only the fact of intersection of the sightline and pixel is considered
-#     if True - area of the sightline and pixel intersection is considered
-#     r2dep - if dependence of sygnal intensity on r^2 exists, warning: normalization of this parameter is pixel length = 1
-#     """
-#     #create array of polygons, representing grid
-#     box_ar = np.empty([M,N],dtype=Polygon)
-#     for j in range (M):
-#             for k in range (N):
-#                 box_ar[j,k] = box(k,j,k+1,j+1)
-#     #finding first sightline of the detector
-#     r = sqrt(M * M  + N * N ) / 2 + shift
-#     p1 = (N/2, M/2)
-#     p2 = (N/2 + r + 1,M/2)
-#     l = LineString([p1,p2])
-#     l = rotate(l, -pos, origin = p1, use_radians=True)
-#     grid_box = LinearRing([(0,0),(N,0),(N,M),(0,M)])
-#     p3 = grid_box.intersection(l)
-#     l = LineString ([p1,p3])
-#     sc_factor = (l.length + shift) / l.length
-#     l = scale (l, xfact = sc_factor, yfact = sc_factor, origin = p1)
-#     ptop = l.coords[1]
-#     l = scale (l,xfact = 2, yfact = 2, origin = ptop)
-#     l = rotate(l, -angle/2, origin = ptop, use_radians=True)
-#     l = rotate(l, incline, origin = ptop, use_radians=True)
-#
-#     w = np.zeros((number, M, N))      #basis for the resulting array of weights
-#     d_angle = angle / number          #angle between two sightlines
-#
-#     #start scanning
-#     for i in range (number):
-#         det_line = line_to_det(l,width,divergence ) #sightline polygon which considers finite line width
-#
-#         if weighted:
-#             for j in range (M):
-#                 for k in range (N):
-#                     if det_line.intersects(box_ar[j,k]):
-#                         w[i,j,k] = det_line.intersection(box_ar[j,k]).area
-#         else:
-#             for j in range (M):
-#                 for k in range (N):
-#                     w[i,j,k] = det_line.intersects(box_ar[j,k])
-#         if r2dep:
-#             for j in range (M):
-#                 for k in range (N):
-#                     x = j - ptop[1]
-#                     y = k - ptop[0]
-#                     r2 = x**2+y**2
-#                     w[i,j,k] = w[i,j,k] / r2
-#
-#
-#
-#         l = rotate(l,d_angle,origin=ptop,use_radians=True) #rotate sightline for the next step
-#     return  w
+def fan_detector(mesh, p1, p2, width,  number, index=(0, 1), angle=np.pi/2, *args, **kwargs):
+    """ Creates one fan of detectors.
+
+    Args:
+        mesh(tomomak.main_structures.Mesh): mesh to work with.
+        p1(tuple of 2 floats): Detector origin (x, y).
+        p2(tuple of 2 floats): Second point, characterizing central axis of detector fan.
+        width: width of each line.
+        index(tuple of two ints, optional): axes to build object at. Default: (0,1).
+        number(integer): number of detector lines in the fan.
+        angle(float): total angle of fan in Rad. Default: pi/2.
+        *args, **kwarg - line2d arguments.
+
+    Returns:
+        ndarray: numpy array, representing fan of detectors on a given mesh.
+    """
+    if angle < 0 or angle >= np.pi:
+        raise ValueError("angle value is {}. It should be >= 0 and < pi.".format(angle))
+    # finding first sightline of the detector
+    p1 = np.array(p1)
+    p2 = np.array(p2)
+    if isinstance(index, int):
+        index = [index]
+    r = p2 - p1
+    r = r / np.cos(angle / 2)
+    p2 = p1 + r
+    line = shapely.geometry.LineString([p1, p2])
+    line = shapely.affinity.rotate(line, -angle / 2, origin=p1, use_radians=True)
+    rot_angle = angle / (number - 1)
+    # start scanning
+    shape = [0]
+    shape.extend(mesh.shape)
+    res = np.zeros(shape)
+    for i in range(number):
+        p1, p2 = line.coords
+        addition = np.array([line2d(mesh, p1, p2, width, index=index,  *args, **kwargs)])
+        res = np.append(res, addition, axis=0)
+        line = shapely.affinity.rotate(line, rot_angle, origin=p1, use_radians=True)
+    return res
+
+
+def fan_detector_array(mesh, focus_point, radius, fan_num, line_num, width,
+                       incline=0,  *args, **kwargs):
+    """ Creates array of fan detectors around focus points.
+
+      Args:
+          mesh(tomomak.main_structures.Mesh): mesh to work with.
+          focus_point(tuple of 2 floats): Focus point (x, y).
+          radius(float): radius of the circle around focus_point, where detectors are located.
+          fan_num(integer): number of fans.
+          line_num(integer): number of lines.
+          width: width of each line.
+          incline(float): incline of first detector fan in Rad from the (1, 0) direction. Default: 0.
+          *args, **kwarg - fan_detector arguments.
+
+      Returns:
+          ndarray: numpy array, representing fan of detectors on a given mesh.
+      """
+    shape = [0]
+    shape.extend(mesh.shape)
+    res = np.zeros(shape)
+    d_incline = np.pi * 2 / fan_num
+    focus_point = np.array(focus_point)
+    for i in range(fan_num):
+        p1 = np.array([focus_point[0] + radius * np.cos(incline), focus_point[1] + radius * np.sin(incline)])
+        r = (focus_point - p1) * 10
+        p2 = p1 + r
+        res = np.append(res, fan_detector(mesh, p1, p2, width, line_num,  *args, **kwargs), axis=0)
+        print('\r', end='' )
+        print("Generating array of fan detectors: ", str(i*100 // fan_num) + "% complete", end='')
+        incline += d_incline
+    print('\r \r ', end='')
+    print('\r \r ', end='')
+    return res
+
+def parallel_detector(mesh, p1, p2, width, number, shift, index=(0, 1), *args, **kwargs):
+    # finding first sightline of the detector
+    p1 = np.array(p1)
+    p2 = np.array(p2)
+    if isinstance(index, int):
+        index = [index]
+    r = p2 - p1
+    r = r * 5
+    p2 = p1 + r
+    line = shapely.geometry.LineString([p1, p2])
+    # start scanning
+    shape = [0]
+    shape.extend(mesh.shape)
+    res = np.zeros(shape)
+    for i in range(number):
+        p1, p2 = line.coords
+        addition = np.array([line2d(mesh, p1, p2, width, index=index,  *args, **kwargs)])
+        res = np.append(res, addition, axis=0)
+        line = line.parallel_offset(shift, 'left')
+
+    return res
+
 
 def _line_to_polygon(p1, p2, width, divergence=0):
     """Generate detector geometry for one Line of Sight.
@@ -162,8 +160,15 @@ def _line_to_polygon(p1, p2, width, divergence=0):
     Raises:
         ValueError if divergence is < 0 or >= pi.
     """
-    if divergence < 0 or divergence > np.pi:
+    if divergence < 0 or divergence >= np.pi:
         raise ValueError("Divergence value is {}. It should be >= 0 and < pi.".format(divergence))
+    # increase line length in case of line rotation
+    p1 = np.array(p1)
+    p2 = np.array(p2)
+    r = p2 - p1
+    r = r / np.cos(divergence)
+    p2 = p1 + r
+    # take into account width and divergence
     line = shapely.geometry.LineString([p1, p2])
     ll = line.parallel_offset(width/2, 'left')
     p_top = ll.coords[0]

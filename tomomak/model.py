@@ -1,4 +1,5 @@
 import numbers
+import pickle
 
 
 class Model:
@@ -140,8 +141,12 @@ class Model:
 
     def plot1d(self, index=0, data_type="solution", **kwargs):
         if data_type == "solution":
+            if self._solution is None:
+                raise Exception("Solution is not defined.")
             data = self._solution
         elif data_type == "detector_geometry":
+            if self._detector_geometry is None:
+                raise Exception("detector_geometry is not defined.")
             data = self._detector_geometry
         else:
             raise AttributeError("data type {} is unknown".format(data_type))
@@ -150,10 +155,25 @@ class Model:
 
     def plot2d(self, index=0, data_type="solution", **kwargs):
         if data_type == "solution":
+            if self._solution is None:
+                raise Exception("Solution is not defined.")
             data = self._solution
         elif data_type == "detector_geometry":
+            if self._detector_geometry is None:
+                raise Exception("detector_geometry is not defined.")
             data = self._detector_geometry
         else:
             raise AttributeError("data type {} is unknown".format(data_type))
         plot, ax = self._mesh.plot2d(data, index, data_type,  **kwargs)
         return plot, ax
+
+    def save(self, fn):
+        with open(fn, 'wb') as f:
+            pickle.dump(self, f)
+
+
+def load_model(fn):
+    with open(fn, 'rb') as f:
+        return pickle.load(f)
+
+
