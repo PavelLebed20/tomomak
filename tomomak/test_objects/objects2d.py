@@ -3,10 +3,10 @@
 Synthetic object are usually used to test different tomomak components.
 """
 import numpy as np
-from shapely.geometry import Polygon, Point
+import shapely.geometry
 import shapely.affinity
 import tomomak.util.array_routines
-import tomomak.util.geometry
+import tomomak.util.geometry2d
 
 
 def polygon(mesh, points=((0, 0), (5, 5), (10, 0)), index=(0, 1), density=1, broadcast=True):
@@ -37,26 +37,19 @@ def polygon(mesh, points=((0, 0), (5, 5), (10, 0)), index=(0, 1), density=1, bro
     Raises:
         TypeError if one of the axes is not  cartesian (tomomak.main_structures.mesh.cartesian).
     """
-    res = tomomak.util.geometry.intersection_2d(mesh, points, density, index=(0, 1), norm_to='cell_area')
-    pol = Polygon(points)
+    if isinstance(index, int):
+        index = [index]
+    # Get intersection area
+    res = tomomak.util.geometry2d.intersection_2d(mesh, points, index)
+    ds = np.ones_like(res)
     # If axis is 2D
     if mesh.axes[index[0]].dimension == 2:
         i1 = index[0]
-        try:
-            cells = mesh.axes[i1].cell_edges()
-            shape = (mesh.axes[i1].size,)
-            res = np.zeros(shape)
-            for i, row in enumerate(res):
-                cell = Polygon(cells[i])
-                res[i] = pol.intersection(cell).area
-                ds = cell.area
-                res[i] /= ds
-            res *= density
-            return res
-        except (TypeError, AttributeError) as e:
-            raise type(e)(e.message + "Custom axis should implement cell_edges method. "
-                                      "This method returns 1d list of ordered sequence of point tuples."
-                                      " See polygon method docstring for more information.")
+        cells = mesh.axes[i1].cell_edges()
+        for i, row in enumerate(res):
+            if res[i]:
+                cell = shapely.geometry.Polygon(cells[i])
+                ds[i] = cell.area
     # If axes are 1D
     elif mesh.axes[0].dimension == 1:
         i1 = index[0]
@@ -64,41 +57,16 @@ def polygon(mesh, points=((0, 0), (5, 5), (10, 0)), index=(0, 1), density=1, bro
         try:
             cells = mesh.axes[i1].cell_edges2d(mesh.axes[i2])
         except (TypeError, AttributeError):
-            try:
-                cells = mesh.axes[i2].cell_edges2d(mesh.axes[i1])
-            except (TypeError, AttributeError) as e:
-                raise type(e)(e.message + "Custom axis should implement cell_edges2d method. "
-                                          "This method returns 2d list of ordered sequence of point tuples."
-                                          " See polygon method docstring for more information.")
-    else:
-        raise TypeError("2D objects can be built on the 1D and 2D axes only.")
-    shape = (mesh.axes[i1].size, mesh.axes[i2].size)
-    res = np.zeros(shape)
-    for i, row in enumerate(res):
-        for j, _ in enumerate(row):
-            cell = Polygon(cells[i][j])
-            res[i, j] = pol.intersection(cell).area
-            res[i, j] *= multuplier
-            if norm_to is not None:
-                if norm_to == 0:
-                    ds = cell.area
-                elif norm_to == 1:
-                    ds = Point(distant_point).distance(Point(mesh.axes[i1].coordinates[i],
-                                                             mesh.axes[i2].coordinates[j]))
-                elif norm_to == 2:
-                    ds = Point(distant_point).distance(Point(mesh.axes[i1].coordinates[i],
-                                                             mesh.axes[i2].coordinates[j])) ** 2
-                res[i, j] /= ds
-
-    return res
-
-
-    res = tomomak.util.geometry.intersection_2d(mesh, points, density, index=(0, 1), norm_to='cell_area')
+            cells = mesh.axes[i2].cell_edges2d(mesh.axes[i1])
+        for i, row in enumerate(res):
+            for j, _ in enumerate(row):
+                if res[i, j]:
+                    cell = shapely.geometry.Polygon(cells[i][j])
+                    ds[i, j] = cell.area
+    res *= density
+    res /= ds
     if broadcast:
         res = tomomak.util.array_routines.broadcast_object(res, index, mesh.shape)
-
-
-
     return res
 
 
@@ -152,7 +120,7 @@ def ellipse(mesh, center=(0, 0), ax_len=(5, 5), index=(0, 1), density=1, resolut
     Raises:
         TypeError if one of the axes is not  cartesian (tomomak.main_structures.mesh.cartesian).
     """
-    points = Point(0, 0).buffer(1, resolution)
+    points = shapely.geometry.Point(0, 0).buffer(1, resolution)
     points = shapely.affinity.scale(points, ax_len[0], ax_len[1])
     points = shapely.affinity.translate(points, center[0], center[1])
     return polygon(mesh, points, index, density, broadcast)

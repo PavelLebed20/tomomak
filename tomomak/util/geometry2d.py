@@ -1,11 +1,10 @@
 """Routines to work with geometry
 """
 import numpy as np
-from shapely.geometry import Polygon, Point
-import tomomak.util.array_routines
+from shapely.geometry import Polygon
 
 
-def intersection_2d(mesh, points, multuplier=1, index=(0, 1), norm_to=None, distant_point = None):
+def intersection_2d(mesh, points, index=(0, 1), calc_area=True):
     """Create solution array, representing 2d polygon, defined by specified points on the given mesh.
 
     If there are more than 2 dimension in model, broadcasting to other dimensions is performed.
@@ -23,9 +22,8 @@ def intersection_2d(mesh, points, multuplier=1, index=(0, 1), norm_to=None, dist
         points(An ordered sequence of point tuples, optional): Polygon points (x, y).
             default: ((0 ,0), (5, 5), (10, 0))
         index(tuple of two ints, optional): axes to build object at. Default:  (0,1)
-        multuplier(float, optional): Object density. Default: 1.
-        broadcast(bool, optional) If true, resulted array is broadcasted to fit Mesh shape.
-            If False, 2d array is returned, even if Mesh is not 2D. Default: True.
+        calc_area(bool): If True, area of intersection with each cell is calculated, if False,
+            only fact of intersecting with mesh cell is taken into account. Default: True.
 
     Returns:
         ndarray: 2D numpy array, representing polygon on the given mesh.
@@ -33,19 +31,6 @@ def intersection_2d(mesh, points, multuplier=1, index=(0, 1), norm_to=None, dist
     Raises:
         TypeError if one of the axes is not  cartesian (tomomak.main_structures.mesh.cartesian).
     """
-    if norm_to is not None:
-        if norm_to == 'distance':
-            if distant_point is None:
-                raise ValueError("distant_point should be defined.")
-        if norm_to == 'cell_area':
-            norm_to = 0
-        elif norm_to == 'distance':
-            norm_to = 1
-        elif norm_to == 'distance2':
-            norm_to = 2
-        else:
-            raise TypeError("divide_by type unknown. Possible types are 'cell_area', 'distance'.")
-
     if isinstance(index, int):
         index = [index]
     pol = Polygon(points)
@@ -58,21 +43,18 @@ def intersection_2d(mesh, points, multuplier=1, index=(0, 1), norm_to=None, dist
             res = np.zeros(shape)
             for i, row in enumerate(res):
                 cell = Polygon(cells[i])
-                res[i] = pol.intersection(cell).area
-                res[i] *= multuplier
-                if norm_to is not None:
-                    if norm_to == 0:
-                        ds = cell.area
-                    elif norm_to == 1:
-                        ds = Point(distant_point).distance(Point(mesh.axes[i1].coordinates[i]))
-                    elif norm_to == 2:
-                        ds = Point(distant_point).distance(Point(mesh.axes[i1].coordinates[i]))**2
-                    res[i] /= ds
+                if calc_area:
+                    if pol.intersects(cell):
+                        res[i] = pol.intersection(cell).area
+                else:
+                    inters = pol.intersects(cell)
+                    if inters:
+                        res[i] = 1
             return res
         except (TypeError, AttributeError) as e:
             raise type(e)(e.message + "Custom axis should implement cell_edges method. "
                                       "This method returns 1d list of ordered sequence of point tuples."
-                                      " See polygon method docstring for more information.")
+                                      " See docstring for more information.")
     # If axes are 1D
     elif mesh.axes[0].dimension == 1:
         i1 = index[0]
@@ -85,7 +67,7 @@ def intersection_2d(mesh, points, multuplier=1, index=(0, 1), norm_to=None, dist
             except (TypeError, AttributeError) as e:
                 raise type(e)(e.message + "Custom axis should implement cell_edges2d method. "
                                           "This method returns 2d list of ordered sequence of point tuples."
-                                          " See polygon method docstring for more information.")
+                                          " See docstring for more information.")
     else:
         raise TypeError("2D objects can be built on the 1D and 2D axes only.")
     shape = (mesh.axes[i1].size, mesh.axes[i2].size)
@@ -93,17 +75,11 @@ def intersection_2d(mesh, points, multuplier=1, index=(0, 1), norm_to=None, dist
     for i, row in enumerate(res):
         for j, _ in enumerate(row):
             cell = Polygon(cells[i][j])
-            res[i, j] = pol.intersection(cell).area
-            res[i, j] *= multuplier
-            if norm_to is not None:
-                if norm_to == 0:
-                    ds = cell.area
-                elif norm_to == 1:
-                    ds = Point(distant_point).distance(Point(mesh.axes[i1].coordinates[i],
-                                                        mesh.axes[i2].coordinates[j]))
-                elif norm_to == 2:
-                    ds = Point(distant_point).distance(Point(mesh.axes[i1].coordinates[i],
-                                                             mesh.axes[i2].coordinates[j]))**2
-                res[i, j] /= ds
-
+            if calc_area:
+                if pol.intersects(cell):
+                    res[i, j] = pol.intersection(cell).area
+            else:
+                inters = pol.intersects(cell)
+                if inters:
+                    res[i, j] = 1
     return res
