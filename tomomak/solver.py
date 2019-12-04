@@ -2,12 +2,13 @@ import numpy as np
 import numbers
 
 
+
 class Solver:
     """
     Args:
         alpha(float of iterable of floats):
     """
-    def __init__(self, iterator=None, alpha = 0.1, reg_array=None, reg_alpha = None, stat_array=None):
+    def __init__(self, iterator=None, alpha=0.1, reg_array=None, reg_alpha = None, stat_array=None):
         self.iterator = iterator
         self.alpha = alpha
         self.reg_array = reg_array
@@ -15,7 +16,7 @@ class Solver:
         self.stat_array = stat_array
         self.statistics = []
 
-    def solve(self, model, steps=20,  stop_type='None', stop_val=0, real_solution=None, *args, **kwargs):
+    def solve(self, model, steps=20,  stop_type=None, stop_val=0, real_solution=None, *args, **kwargs):
         if model.detector_signal is None:
             raise ValueError("detector_signal should be defined to perform reconstruction.")
         if model.detector_geometry is None:
@@ -32,23 +33,24 @@ class Solver:
         sol = model.solution
         for i in range(steps):
             # iterator gradient
-            delta = self.iterator.step(model) ####
-            # regularisation gradient
-            delta_reg = 0 #####
+            delta = self.iterator.step(model)
             #######calc alphas
+            new_sol = model.solution + alpha[i] * delta
+            # regularisation
+            delta_reg = 0
             if self.reg_array is not None:
-                for i, r in enumerate(self._reg_array):
-                    dr = r ############
-                    delta_reg += self.reg_alpha[i] * dr
+                for k, r in enumerate(self.reg_array):
+                    dr = r(new_sol, model,  *args, **kwargs)
+                    delta_reg += self.reg_alpha[k] * dr
             # get next_value
-            new_sol = model.solution + alpha[i] * delta + delta_reg
+            new_sol = new_sol + delta_reg
             # statistics
             if self.stat_array is not None:
                 step_statistic = []
                 for s in self.stat_array:
                     s(solution=sol, real_solution = real_solution, old_solution=model.solution, model=model)
                 self.statistics.append(step_statistic)
-            model.solution = new_sol
+            model._solution = new_sol
             # early stopping
             if stop_type is not None:
                 pass ########
