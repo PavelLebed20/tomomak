@@ -72,13 +72,26 @@ class Abstract1dAxis(AbstractAxis):
         :return:
         """
 
-    # @abstractmethod
-    # def to2d(self, axis2):
-    #     """
-    #
-    #     :param axis2:
-    #     :return:
-    #     """
+    @abstractmethod
+    def cell_edges2d(self,axis2):
+        """
+
+        Args:
+            axis2:
+
+        Returns:
+
+        """
+
+    def intersection(self, axis2):
+        """Intersection length of each cell with each cell of another axis as 2D array.
+
+        Args:
+            axis2:
+
+        Returns:
+
+        """
 
 
 class Abstract2dAxis(AbstractAxis):

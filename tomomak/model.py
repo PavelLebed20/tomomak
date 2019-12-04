@@ -171,6 +171,10 @@ class Model:
         with open(fn, 'wb') as f:
             pickle.dump(self, f)
 
+    @staticmethod
+    def load(fn):
+        return load_model(fn)
+
 
 def load_model(fn):
     with open(fn, 'rb') as f:

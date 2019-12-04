@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tomomak.plots import plot1d, plot2d
 import warnings
+import tomomak.util.text
 
 
 class Axis1d(abstract_axes.Abstract1dAxis):
@@ -116,7 +117,7 @@ class Axis1d(abstract_axes.Abstract1dAxis):
         return res
 
     def intersection(self, axis2):
-        """Intersection of each cell with each cell of another axis as 2D array.
+        """Intersection length of each cell with each cell of another axis as 2D array.
 
         Args:
             axis2:
@@ -156,12 +157,12 @@ class Axis1d(abstract_axes.Abstract1dAxis):
             plot, ax = plot1d.bar1d(data, self, 'Density', y_label, filled, fill_scheme,
                                     edgecolor, grid, *args, **kwargs)
         elif data_type == 'detector_geometry':
-            title = 'Detector 1/{}'.format(data.shape[0])
-            y_label = 'Intersection length, {}'.format(self.units)
+            title = "Detector 1/{}".format(data.shape[0])
+            y_label = "Intersection length, {}".format(self.units)
             plot, ax, _ = plot1d.detector_bar1d(data, self, title, y_label, filled,
                                                 fill_scheme, edgecolor, grid, equal_norm, *args, **kwargs)
         else:
-            raise AttributeError('data type {} is unknown'.format(data_type))
+            raise AttributeError("data type {} is unknown".format(data_type))
         plt.show()
         return plot, ax
 
@@ -173,7 +174,8 @@ class Axis1d(abstract_axes.Abstract1dAxis):
         if type(axis2) is not Axis1d:
             raise NotImplementedError("2D plots with such combination of axes are not supported.")
         if data_type == 'solution':
-            title = r"Density, {}{}{}{}".format(self.units, '$^{-1}$', axis2.units, '$^{-1}$')
+            units = tomomak.util.text.density_units([self.units, axis2.units])
+            title = r"Density, {}".format(units)
             plot, ax, fig, cb = plot2d.colormesh2d(data, self, axis2, title, fill_scheme, grid, *args, **kwargs)
         elif data_type == 'detector_geometry':
             title = 'Detector 1/{}'.format(data.shape[0])
