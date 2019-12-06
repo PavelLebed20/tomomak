@@ -35,11 +35,9 @@ class ART(abstract_iterator.AbstractIterator):
 
     def step(self, model, step_num):
         alpha = self.get_alpha(model, step_num)
-        # expected signal
-        expected_signal = signal.get_signal(model.solution, model.detector_geometry)
         # multiplication
         for i in range(model.detector_signal.shape[0]):
-            y = expected_signal[i]
+            y = signal.get_signal_one_det(model.solution, model.detector_geometry[i])
             dp = model.detector_signal[i] - y
             if self.wi[i] != 0:
                 ai = dp / self.wi[i]

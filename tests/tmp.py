@@ -14,8 +14,8 @@ import tomomak.constraints.basic
 
 
 axes = [Axis1d(name="x", units="cm", size=20), Axis1d(name="Y", units="cm", size=30), Axis1d(name="Y", units="cm", size=130)]
-axes = [Axis1d(name="x", units="cm", size=20), Axis1d(name="Y", units="cm", size=30)]
-axes = [Axis1d(name="x", units="cm", size=21), Axis1d(name="Y", units="cm", coordinates=np.array([1, 3, 5, 7, 9, 13]),  lower_limit=0), Axis1d(name="z", units="cm", size=3)]
+#axes = [Axis1d(name="x", units="cm", size=20), Axis1d(name="Y", units="cm", size=30)]
+#axes = [Axis1d(name="x", units="cm", size=21), Axis1d(name="Y", units="cm", coordinates=np.array([1, 3, 5, 7, 9, 13]),  lower_limit=0), Axis1d(name="z", units="cm", size=3)]
 
 mesh = Mesh(axes)
 
@@ -46,20 +46,21 @@ solver = Solver()
 steps = 300000
 solver.real_solution = solution
 import cupy as cp
-#solver.iterator = ml.ML()
+solver.iterator = ml.ML()
 # solver.alpha = cp.linspace(1, 1, steps)
 #solver.iterator = gpu.MLCuda()
 #solver.iterator.alpha = cp.linspace(1, 1, steps)
 solver.stat_array = [statistics.rms]
 # solver.alpha = np.linspace(1, 1, steps)
 #solver.iterator = algebraic.ART()
-solver.iterator = algebraic.SIRT(n_slices=3, iter_type='SIRT')
+#solver.iterator = algebraic.SIRT(n_slices=3, iter_type='SIRT')
 solver.iterator.alpha =  np.linspace(0.1, 0.0001, steps)
 
 solver.constraints_array = [tomomak.constraints.basic.Positive()]
 import time
 start_time = time.time()
-
+solver.stop_array = [statistics.rms]
+solver.stop_values = [0.2]
 solver.solve(mod, steps = steps)
 print("--- %s seconds ---" % (time.time() - start_time))
 mod.plot2d(index=(0,1), data_type='detector_geometry')

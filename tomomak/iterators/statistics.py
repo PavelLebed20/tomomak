@@ -20,7 +20,7 @@ def rms(solution, real_solution, *args, **kwargs):
     if tmp != 0:
         return np.sqrt(res / tmp)
     else:
-        return 0
+        return float("inf")
 
 
 def rn(solution, real_solution, *args, **kwargs):

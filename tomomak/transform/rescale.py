@@ -1,6 +1,6 @@
 import numpy as np
 from tomomak.mesh import mesh
-
+import copy
 
 class Rescale:
     """
@@ -39,6 +39,9 @@ class Rescale:
                 new_edges[-1] = old_edges[-1]
                 new_axis = type(ax)(name=ax.name, units=ax.units, edges=new_edges)
                 new_mesh.add_axis(axis=new_axis)
+            else:
+                new_axis = copy.copy(ax)
+                new_mesh.add_axis(axis=new_axis)
         # change solution and detector_geometry.
         new_mesh = NewMesh(new_mesh)
         new_mesh(model)
@@ -70,15 +73,18 @@ class NewMesh:
                 inters_len = np.transpose(inters_len)
             except (TypeError, AttributeError):
                 inters_len = new_mesh.axes[i].intersection(ax)
+            if data_type == 'solution':
+                divider = new_mesh.axes[i].volumes
+            elif data_type == 'detector_geometry':
+                divider = ax.volumes# np.ones(new_shape[i])
+            else:
+                raise Exception("Wrong data type")
             for j in range(new_shape[i]):
-                if data_type == 'solution':
-                    divider = ax.volumes
-                elif data_type == 'detector_geometry':
-                    divider = np.ones(ax.volumes.shape)
-                else:
-                    raise Exception("Wrong data type")
                 for k in range(solution.shape[0]):
-                    new_solution[j, ...] += solution[k, ...] * inters_len[j, k] / divider[k]
+                    if data_type == 'solution':
+                        new_solution[j, ...] += solution[k, ...] * inters_len[j, k] / divider[j]
+                    else:
+                        new_solution[j, ...] += solution[k, ...] * inters_len[j, k] / divider[k]
             new_solution = np.swapaxes(new_solution, 0, i)
         return new_solution
 
@@ -91,10 +97,15 @@ class NewMesh:
         if solution is not None:
             solution = self._new_mesh(self.new_mesh, model, solution, 'solution')
         if detector_geometry is not None:
+            new_shape = [detector_geometry.shape[0]]
+            new_shape.extend(self.new_mesh.shape)
+            new_detector_geometry = np.zeros(new_shape)
             for i, geom in enumerate(detector_geometry):
-                detector_geometry[i] = self._new_mesh(self.new_mesh, model, geom, 'detector_geometry')
+                new_detector_geometry[i] = self._new_mesh(self.new_mesh, model, geom, 'detector_geometry')
+        else:
+            new_detector_geometry = None
         model.mesh = self.new_mesh
         model.solution = solution
-        model.detector_geometry = detector_geometry
+        model.detector_geometry = new_detector_geometry
         self.old_mesh = self.new_mesh
         self.new_mesh = old_mesh

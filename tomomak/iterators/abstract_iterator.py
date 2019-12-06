@@ -5,9 +5,12 @@ import numpy as np
 
 
 class AbstractIterator(ABC):
+    """
+    """
     def __init__(self, alpha=0.1, alpha_calc=None):
         self.alpha = alpha
         self.alpha_calc = alpha_calc
+        self._alpha = None
 
     @abstractmethod
     def init(self, model, steps, *args, **kwargs): ###NEED test for this
@@ -15,12 +18,14 @@ class AbstractIterator(ABC):
         """
         if self.alpha_calc is not None:
             if self.alpha is not None:
-                self.alpha = None
-                warnings.warn("Since alpha_calc is defined in {}, alpha was set to None.".format(self))
+                self._alpha = None
+                warnings.warn("Since alpha_calc is defined in {}, alpha is Ignored.".format(self))
         else:
             if isinstance(self.alpha, numbers.Number):
-                self.alpha = np.full(steps, self.alpha)
-            if len(self.alpha) < steps:
+                self._alpha = np.full(steps, self.alpha)
+            else:
+                self._alpha = self.alpha
+            if len(self._alpha) < steps:
                 raise ValueError("Alpha len in {} should be equal or greater than number of steps.".format(self))
         """
 
@@ -42,7 +47,7 @@ class AbstractIterator(ABC):
         if self.alpha_calc is not None:
             alpha = self.alpha_calc.step(model=model)
         else:
-            alpha = self.alpha[step_num]
+            alpha = self._alpha[step_num]
         return alpha
 
     @abstractmethod

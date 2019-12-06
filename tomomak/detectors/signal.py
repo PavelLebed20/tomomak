@@ -17,8 +17,23 @@ def get_signal(solution, detector_geometry):
     """
     signal = np.zeros(detector_geometry.shape[0])
     for i, ar in enumerate(detector_geometry):
-        signal[i] = np.sum(ar * solution)
+        signal[i] = get_signal_one_det(solution, ar)
     return signal
+
+
+def get_signal_one_det(solution, one_detector_geometry):
+    """Get detector signals from known object and geometry for one detector.
+
+    To find out about solution and detector_geometry see tomomak.model description.
+
+    Args:
+        solution(ndarray): known solution.
+        one_detector_geometry(ndarray): known detector geometry.
+
+    Returns:
+        float: calculated signal
+    """
+    return np.sum(one_detector_geometry * solution)
 
 
 def add_noise(signal, st_div):
