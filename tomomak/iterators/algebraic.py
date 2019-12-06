@@ -1,22 +1,26 @@
 from . import abstract_iterator
 import numpy as np
-import warnings
 from tomomak.detectors import signal
+
 
 class ART(abstract_iterator.AbstractIterator):
     """A set of iterative algebraic algorithms for image reconstruction
-    see E.F. Oliveira et. al., Comparison among tomographic reconstruction algorithms with limited data
+    see E.F. Oliveira et. al., "Comparison among tomographic reconstruction algorithms with limited data".
     in the case of ART correction is applied after calculations of single ray
-    in case of SIRT averaged correction is applied at the end of iteration.
-    In the case of several projections in SIRT averaged correction is applied after iteration over each slide
     """
+    iter_types = ('ART', 'MART')
 
-    def __init__(self, alpha):
+    def __init__(self, alpha=0.1, alpha_calc=None, iter_type='ART'):
+        super().__init__(alpha, alpha_calc)
         self.shape = None
         self.wi = None
-        self.alpha = alpha
+        if iter_type not in self.iter_types:
+            raise ValueError(" Iterator type {} is not supported. Supported iterator types: {}."
+                             .format(iter_type, self.iter_types))
+        self.iter_type = self.iter_types.index(iter_type)
 
-    def init(self, model):  # maybe make this __init__
+    def init(self, model, steps, *args, **kwargs):
+        super().init(model, steps, *args, **kwargs)
         if model.solution is None:
             shape = model.mesh.shape
             model.solution = np.zeros(shape)
@@ -26,26 +30,57 @@ class ART(abstract_iterator.AbstractIterator):
     def finalize(self, model):
         pass
 
-    @property
-    def name(self):
-        return 'Maximum Likelihood method'
+    def __str__(self):
+        return self.iter_types[self.iter_type]
 
-    def step(self, model):
+    def step(self, model, step_num):
+        alpha = self.get_alpha(model, step_num)
         # expected signal
         expected_signal = signal.get_signal(model.solution, model.detector_geometry)
         # multiplication
-        new_sol  = model.solution
         for i in range(model.detector_signal.shape[0]):
-            y =  expected_signal[i]
+            y = expected_signal[i]
             dp = model.detector_signal[i] - y
-            if (self.wi[i] != 0):
+            if self.wi[i] != 0:
                 ai = dp / self.wi[i]
             else:
                 ai = 0
-            # if type == 'MART':
-            #     if model.detector_signal[i] != 0:
-            #         ai = ai / np.abs(model.detector_signal.y[i])
-            # res = res + param * ai * w[i]
-            new_sol =  new_sol  + ai * model.detector_geometry[i] * self.alpha
-        delta = new_sol - model.solution
-        return delta
+            if self.iter_type == 1:  # MART
+                if model.detector_signal[i] != 0:
+                    ai = ai / np.abs(model.detector_signal.y[i])
+            model.solution = model.solution + ai * model.detector_geometry[i] * alpha
+
+
+class SIRT(ART):
+    """A set of iterative algebraic algorithms for image reconstruction
+        see E.F. Oliveira et. al., "Comparison among tomographic reconstruction algorithms with limited data."
+        in case of SIRT averaged correction is applied at the end of iteration.
+        In the case of several projections in SIRT averaged correction is applied after iteration over each slide
+        """
+    iter_types = ('SIRT', 'SMART')
+
+    def __init__(self, alpha=0.1, alpha_calc=None, iter_type='SIRT', n_slices=1):
+        super().__init__(alpha, alpha_calc, iter_type)
+        self.n_slices = n_slices
+
+    def step(self, model, step_num):
+        alpha = self.get_alpha(model, step_num)
+        # multiplication
+        det_num = model.detector_signal.shape[0]
+        for i in range(self.n_slices):
+            # get slice
+            # ############## may be speeded up if all slices are calc. once out of for cycle
+            i1 = int(i * np.ceil(det_num / self.n_slices))
+            i2 = int(min((i + 1) * np.ceil(det_num / self.n_slices), det_num))
+            w_slice = model.detector_geometry[i1:i2]
+            wi_slice = self.wi[i1:i2]
+            y_slice = model.detector_signal[i1:i2]
+            # calculating  correction
+            p = signal.get_signal(model.solution, w_slice)
+            dp = y_slice - p
+            a = np.divide(dp, wi_slice, out=np.zeros_like(dp), where=wi_slice != 0)
+
+            if self.iter_type == 1:  # SMART
+                a = np.divide(a, np.abs(y_slice), out=np.zeros_like(a), where=y_slice > 1E-20)
+            correction = alpha / (i2 - i1) * np.sum(np.multiply(np.moveaxis(w_slice, 0, -1), a), axis=-1)
+            model.solution = model.solution + correction

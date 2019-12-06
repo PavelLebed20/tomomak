@@ -3,6 +3,7 @@ import numpy as np
 import warnings
 from tomomak.detectors import signal
 
+
 class ML(abstract_iterator.AbstractIterator):
     """Maximum likelihood iterative solver for image reconstruction
     see  for example G. Kontaxakis and L.G. Strauss
@@ -11,11 +12,13 @@ class ML(abstract_iterator.AbstractIterator):
     """
 
     def __init__(self):
-        self.w_det = None
+        super().__init__(None, None)
         self.wi = None
         self.shape = None
+        self.w_det = None
 
-    def init(self, model):  # maybe make this __init__
+    def init(self, model, steps, *args, **kwargs):
+        # super().init(model, steps, *args, **kwargs)
         if model.solution is None:
             shape = model.mesh.shape
             model.solution = np.ones(shape)
@@ -29,33 +32,32 @@ class ML(abstract_iterator.AbstractIterator):
     def finalize(self, model):
         pass
 
-    @property
-    def name(self):
+    def __str__(self):
         return 'Maximum Likelihood method'
 
-    def step(self, model):
+    def step(self, model, step_num):
         # expected signal
         y_expected = signal.get_signal(model.solution, model.detector_geometry)
         # multiplication
         mult = np.sum(np.divide(self.w_det, y_expected, out=np.zeros_like(self.w_det), where=y_expected != 0), axis=-1)
         mult = mult / self.wi
-        # find delta
-        new_sol = model.solution * mult
-        delta = new_sol - model.solution
-        return delta
+        # result
+        model.solution = model.solution * mult
+
 
 
 class MLFlatten(abstract_iterator.AbstractIterator):
-    """ML analog, which flattens arrays during calculation.
+    """ML analog, which flattens arrays during calculation. Experimental feature.
     """
 
     def __init__(self):
+        super().__init__(alpha=0.1, alpha_calc=None)
         self.w_det = None
         self.wi = None
         self.shape = None
         self.det_shape = None
 
-    def init(self, model):  # maybe make this __init__
+    def init(self, model, *args, **kwargs):  # maybe make this __init__
         if model.solution is None:
             shape = model.mesh.shape
             model.solution = np.ones(shape)
@@ -75,16 +77,15 @@ class MLFlatten(abstract_iterator.AbstractIterator):
         model._solution = model.solution.reshape(self.shape)
 
     @property
-    def name(self):
+    def __str__(self):
         return 'Maximum Likelihood method'
 
-    def step(self, model):
+    def step(self, model, step_num):
         # expected signal
         y_expected = signal.get_signal(model.solution, model.detector_geometry)
         # multiplication
         mult = np.sum(np.divide(self.w_det, y_expected, out=np.zeros_like(self.w_det), where=y_expected != 0), axis=-1)
         mult = mult / self.wi
         # find delta
-        new_sol = model.solution * mult
-        delta = new_sol - model.solution
-        return delta
+        model.solution = model.solution * mult
+

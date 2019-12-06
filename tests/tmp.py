@@ -7,21 +7,22 @@ from tomomak.transform import rescale
 from tomomak.transform import pipeline
 from tomomak.detectors import detectors2d, signal
 from tomomak import iterators
-from tomomak.iterators import ml, algebraic
+from tomomak.iterators import ml, algebraic, gpu
 from tomomak.iterators import statistics
-import tomomak.regularization.basic
+import tomomak.constraints.basic
 
 
 
 axes = [Axis1d(name="x", units="cm", size=20), Axis1d(name="Y", units="cm", size=30), Axis1d(name="Y", units="cm", size=130)]
-#axes = [Axis1d(name="x", units="cm", size=21), Axis1d(name="Y", units="cm", coordinates=np.array([1, 3, 5, 7, 9, 13]),  lower_limit=0), Axis1d(name="z", units="cm", size=3)]
+axes = [Axis1d(name="x", units="cm", size=20), Axis1d(name="Y", units="cm", size=30)]
+axes = [Axis1d(name="x", units="cm", size=21), Axis1d(name="Y", units="cm", coordinates=np.array([1, 3, 5, 7, 9, 13]),  lower_limit=0), Axis1d(name="z", units="cm", size=3)]
 
 mesh = Mesh(axes)
 
 solution = polygon(mesh, [(1,1), (1, 8), (7, 9), (7, 2)])
 
 #solution = detectors2d.line2d(mesh, (-1, 7), (11, 3), 1, divergence=0.1, )
-det = detectors2d.fan_detector_array(mesh, (5,5), 11, 20, 22, 1, incline=0 )
+det = detectors2d.fan_detector_array(mesh, (5,5), 11, 30, 22, 1, incline=0 )
 
 det_signal = signal.get_signal(solution, det)
 #det = detectors2d.parallel_detector(mesh,(-10, 7), (11, 3), 1, 10, 0.2)
@@ -42,21 +43,24 @@ mod = Model(mesh=mesh,  detector_signal = det_signal, detector_geometry=det, sol
 #mod.plot2d(index=(0,1))
 mod.solution = None
 solver = Solver()
-steps = 500
-
+steps = 300000
+solver.real_solution = solution
 import cupy as cp
-# solver.alpha = np.linspace(1, 1, steps)
-# solver.iterator = ml.ML()
+#solver.iterator = ml.ML()
 # solver.alpha = cp.linspace(1, 1, steps)
-# solver.iterator = ml.MLCuda()
-#solver.stat_array = [statistics.rms]
-solver.alpha = np.linspace(1, 1, steps)
-solver.iterator = algebraic.ART(0.1)
-solver.reg_alpha = [1]
-solver.reg_array = [tomomak.regularization.basic.positive]
+#solver.iterator = gpu.MLCuda()
+#solver.iterator.alpha = cp.linspace(1, 1, steps)
+solver.stat_array = [statistics.rms]
+# solver.alpha = np.linspace(1, 1, steps)
+#solver.iterator = algebraic.ART()
+solver.iterator = algebraic.SIRT(n_slices=3, iter_type='SIRT')
+solver.iterator.alpha =  np.linspace(0.1, 0.0001, steps)
+
+solver.constraints_array = [tomomak.constraints.basic.Positive()]
 import time
 start_time = time.time()
-solver.solve(mod, steps = steps, real_solution=solution)
+
+solver.solve(mod, steps = steps)
 print("--- %s seconds ---" % (time.time() - start_time))
 mod.plot2d(index=(0,1), data_type='detector_geometry')
 #mod.plot1d(index=0, data_type='detector_geometry')

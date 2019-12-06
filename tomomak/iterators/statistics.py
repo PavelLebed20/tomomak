@@ -13,11 +13,14 @@ def rms(solution, real_solution, *args, **kwargs):
         float: normalized RMS.
 
     """
-    res = np.subtract(solution, real_solution)
+    res = solution - real_solution
     res = np.square(res)
     res = np.sum(res)
     tmp = np.sum(np.square(solution))
-    return np.sqrt(res / tmp)
+    if tmp != 0:
+        return np.sqrt(res / tmp)
+    else:
+        return 0
 
 
 def rn(solution, real_solution, *args, **kwargs):

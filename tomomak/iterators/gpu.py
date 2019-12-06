@@ -5,8 +5,17 @@ import cupy as cp
 
 
 class MLCuda(abstract_iterator.AbstractIterator):
+    """Maximum likelihood iterative solver for image reconstruction using GPU for calculation.
+      see  tomomak.iterators.ml.ML for description.
+      Warning: GPU calculations are experimental.
+      Requires cupy to be installed.
+      If you want to use statistics or constraints, GPU version of these objects are needed.
+      Alpha should be cupy array.
+      Typical performance improvement is 6x for GTX 1060 or 50x for TITAN as compared to core i7-7700.
+      """
 
     def __init__(self):
+        super().__init__(None, None)
         self.w_det = None
         self.wi = None
         self.shape = None
@@ -14,7 +23,8 @@ class MLCuda(abstract_iterator.AbstractIterator):
         self.y_len = None
         self.mult = None
 
-    def init(self, model): #maybe make this __init__
+    def init(self, model, steps, *args, **kwargs):
+        # super().init(model, steps, *args, **kwargs)
         if model.solution is None:
             shape = model.mesh.shape
             model.solution = cp.ones(shape)
@@ -36,11 +46,10 @@ class MLCuda(abstract_iterator.AbstractIterator):
         model.detector_geometry = cp.asnumpy(model.detector_geometry)
         model.solution = cp.asnumpy(model.solution)
 
-    @property
-    def name(self):
-        return 'Maximum Likelihood method'
+    def __str__(self):
+        return 'Maximum Likelihood method (GPU version)'
 
-    def step(self, model):
+    def step(self, model, step_num):
         #expected signal
         for i in range(self.y_len):
             tmp = cp.multiply(model.solution, model.detector_geometry[i])
@@ -51,6 +60,6 @@ class MLCuda(abstract_iterator.AbstractIterator):
         self.mult = cp.sum(self.mult, axis=-1)
         self.mult /= self.wi
         # find delta
-        new_sol = model.solution * self.mult
-        delta = new_sol - model.solution
-        return delta
+        model.solution = model.solution * self.mult
+
+
