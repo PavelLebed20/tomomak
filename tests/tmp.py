@@ -13,8 +13,8 @@ import tomomak.constraints.basic
 
 
 
-axes = [Axis1d(name="x", units="cm", size=20), Axis1d(name="Y", units="cm", size=30), Axis1d(name="Y", units="cm", size=130)]
-#axes = [Axis1d(name="x", units="cm", size=20), Axis1d(name="Y", units="cm", size=30)]
+#axes = [Axis1d(name="x", units="cm", size=20), Axis1d(name="Y", units="cm", size=30), Axis1d(name="Y", units="cm", size=130)]
+axes = [Axis1d(name="x", units="cm", size=20), Axis1d(name="Y", units="cm", size=30)]
 #axes = [Axis1d(name="x", units="cm", size=21), Axis1d(name="Y", units="cm", coordinates=np.array([1, 3, 5, 7, 9, 13]),  lower_limit=0), Axis1d(name="z", units="cm", size=3)]
 
 mesh = Mesh(axes)
@@ -22,7 +22,7 @@ mesh = Mesh(axes)
 solution = polygon(mesh, [(1,1), (1, 8), (7, 9), (7, 2)])
 
 #solution = detectors2d.line2d(mesh, (-1, 7), (11, 3), 1, divergence=0.1, )
-det = detectors2d.fan_detector_array(mesh, (5,5), 11, 30, 22, 1, incline=0 )
+det = detectors2d.fan_detector_array(mesh, (5,5), 11, 10, 22, 1, incline=0 )
 
 det_signal = signal.get_signal(solution, det)
 #det = detectors2d.parallel_detector(mesh,(-10, 7), (11, 3), 1, 10, 0.2)
@@ -43,7 +43,7 @@ mod = Model(mesh=mesh,  detector_signal = det_signal, detector_geometry=det, sol
 #mod.plot2d(index=(0,1))
 mod.solution = None
 solver = Solver()
-steps = 300000
+steps = 100
 solver.real_solution = solution
 import cupy as cp
 solver.iterator = ml.ML()
@@ -56,7 +56,12 @@ solver.stat_array = [statistics.rms]
 #solver.iterator = algebraic.SIRT(n_slices=3, iter_type='SIRT')
 solver.iterator.alpha =  np.linspace(0.1, 0.0001, steps)
 
-solver.constraints_array = [tomomak.constraints.basic.Positive()]
+import scipy.ndimage
+func = scipy.ndimage.gaussian_filter1d
+#c2 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=0, alpha=1, sigma=2)
+c2 = tomomak.constraints.basic.ApplyFunction(scipy.ndimage.gaussian_filter, sigma=1, alpha=1)
+# c3 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=1, alpha=1, sigma=2)
+solver.constraints_array = [tomomak.constraints.basic.Positive(), c2]
 import time
 start_time = time.time()
 solver.stop_array = [statistics.rms]

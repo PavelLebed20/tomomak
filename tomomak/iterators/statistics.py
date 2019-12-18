@@ -1,5 +1,5 @@
 import numpy as np
-
+from tomomak.detectors import signal
 
 def rms(solution, real_solution, *args, **kwargs):
     """Returns a normalized root mean square error
@@ -23,11 +23,11 @@ def rms(solution, real_solution, *args, **kwargs):
         return float("inf")
 
 
-def rn(solution, real_solution, *args, **kwargs):
+def rn(model, real_solution, *args, **kwargs):
     """Residual norm.
 
     Args:
-        solution(ndarray): supposed solution.
+        model(tomomak.Model): used model.
         real_solution(ndarray): known solution.
         *args, **kwargs: not used, but needed to be here in order to work with Solver properly.
 
@@ -35,7 +35,7 @@ def rn(solution, real_solution, *args, **kwargs):
         float: residual norm
 
     """
-    norm = np.subtract(solution, real_solution)
+    norm = np.subtract(model.detector_signal, signal.get_signal(model.solution, model.detector_geometry))
     norm = np.square(norm)
     return np.sqrt(np.sum(norm))
 

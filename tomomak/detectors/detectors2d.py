@@ -120,7 +120,23 @@ def fan_detector_array(mesh, focus_point, radius, fan_num, line_num, width,
     print('\r \r ', end='')
     return res
 
+
 def parallel_detector(mesh, p1, p2, width, number, shift, index=(0, 1), *args, **kwargs):
+    """ Creates array of parallel detectors.
+
+       Args:
+           mesh(tomomak.main_structures.Mesh): mesh to work with.
+           p1(tuple of 2 floats): Detector origin (x, y).
+           p2(tuple of 2 floats): Second point, characterizing central axis of detectors.
+           width(float): width of each line.
+           number(int): number of detectors.
+           shift(float): shift of each line as compared to previous.
+           index(tuple of two ints, optional): axes to build object at. Default: (0,1).
+           *args, **kwarg - additional line2d arguments.
+
+       Returns:
+           ndarray: numpy array, representing detectors on a given mesh.
+       """
     # finding first sightline of the detector
     p1 = np.array(p1)
     p2 = np.array(p2)
@@ -139,7 +155,6 @@ def parallel_detector(mesh, p1, p2, width, number, shift, index=(0, 1), *args, *
         addition = np.array([line2d(mesh, p1, p2, width, index=index,  *args, **kwargs)])
         res = np.append(res, addition, axis=0)
         line = line.parallel_offset(shift, 'left')
-
     return res
 
 

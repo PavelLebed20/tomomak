@@ -3,6 +3,7 @@ import numbers
 import warnings
 import copy
 
+
 class Solver:
     """
     Args:
@@ -33,23 +34,23 @@ class Solver:
                 raise ValueError("stop_array and stop_values have different length.")
         # Init iterator and constraints.
         print("Start calculation with {} iterations using {}.".format(steps, self.iterator))
-        self.iterator.init(model, steps, *args, **kwargs)
+        if self.iterator is not None:
+            self.iterator.init(model, steps, *args, **kwargs)
         if self.constraints_array is not None:
             for r in self.constraints_array:
                 r.init(model, steps, *args, **kwargs)
             print("Used constraints:")
             for c in self.constraints_array:
                 print(c)
-        # if self.stop_criteria is not None:
-        #     self.stop_criteria .init(model, steps, *args, **kwargs)
-        #     print("Stopping criteria: {}".format(self.stop_criteria))
         if self.alpha_calc is not None:
             self.alpha_calc.init(model, steps, *args, **kwargs)
             print("Method of step calculation: {}".format(self.alpha_calc))
+
         # Start iteration
         for i in range(steps):
             old_solution = copy.copy(model.solution)
-            self.iterator.step(model=model, step_num=i)
+            if self.iterator is not None:
+                self.iterator.step(model=model, step_num=i)
             # constraints
             if self.constraints_array is not None:
                 for k, r in enumerate(self.constraints_array):
@@ -59,7 +60,7 @@ class Solver:
                 step_statistic = []
                 for s in self.stat_array:
                     step_statistic.append(s(solution=model.solution, step_num=i, real_solution=self.real_solution,
-                      old_solution=old_solution, model=model))
+                                            old_solution=old_solution, model=model))
                 self.statistics.append(step_statistic)
             # early stopping
             if self.stop_array is not None:
@@ -78,5 +79,11 @@ class Solver:
                 print("...", str(i * 100 // steps) + "% complete", end='')
 
         print('\r \r', end='')
-        self.iterator.finalize(model)
-        print("Calculation ended in ", i + 1, "steps.")
+        if self.iterator is not None:
+            self.iterator.finalize(model)
+        if self.constraints_array is not None:
+            for r in self.constraints_array:
+                r.finalize(model)
+        if self.alpha_calc is not None:
+            self.alpha_calc.finalize(model)
+

@@ -19,10 +19,24 @@ def multiply_along_axis(a, b, axis):
 
 
 def broadcast_object(ar, index, shape):
+    """Broadcast array to a new shape, using given indexes.
+
+    Args:
+        ar(ndarray): numpy array to broadcast.
+        index(int or tuple of ints):  In the new array input array will be represented using this index or indexes.
+        shape(tuple of ints): new  shape.
+
+    Returns:
+        ndarray: broadkasted array
+
+    """
     if isinstance(index, int):
         index = [index]
     if ar.shape == shape:
         return ar
+    elif len(ar.shape) >= len(shape):
+        raise ValueError("New shape should have more dimensions than old shape. "
+                         "New shape is {}, old shape is {}".format(ar.shape, shape))
     else:
         # Moving current axes to the end in order to prepare shape for numpy broadcast
         shape = list(shape)
