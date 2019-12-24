@@ -29,7 +29,7 @@ det_signal = signal.get_signal(solution, det)
 
 #det = detectors2d.fan_detector(mesh, (-3, 7), (11, 7), 0.5, 10, angle=np.pi/2)
 # solution = rectangle(mesh,center=(6, 4), size = (4, 2.7), index = (1,2))
-# solution  = ellipse(mesh)
+# solution  = real_solution(mesh)
 # solution  = pyramid(mesh,center=(6, 4), size = (6.1, 2.7) )
 # solution  = cone(mesh,center=(5, 5), ax_len=(3, 7))
 

@@ -1,8 +1,11 @@
 import numpy as np
 from tomomak.detectors import signal
 
+
 def rms(solution, real_solution, *args, **kwargs):
     """Returns a normalized root mean square error
+
+    Real solution should be defined in order to get RMS: to do this set real_solution member of solver object.
 
     Args:
         solution(ndarray): supposed solution.

@@ -1,0 +1,189 @@
+from tomomak import model
+from tomomak import solver
+from tomomak.test_objects import objects2d
+from tomomak.mesh import mesh
+from tomomak.mesh.cartesian import Axis1d
+import numpy as np
+from tomomak.detectors import detectors2d, signal
+from tomomak.iterators import algebraic
+from tomomak.iterators import statistics
+import tomomak.constraints.basic
+import matplotlib.pyplot as plt
+import scipy.ndimage
+
+# This example shows one of the basic solutions for limited data reconstruction: smoothing.
+# In order to find best smoothing parameters grid search is used.
+
+# Let's create 2D Cartesian mesh 10 cm x 10 cm which will store our data in  30x30 ndarray.
+axes = [Axis1d(name="X", units="cm", size=30, lower_limit=0, upper_limit=10),
+        Axis1d(name="Y", units="cm", size=30, lower_limit=0, upper_limit=10)]
+mesh = mesh.Mesh(axes)
+
+# Now we need some simple object to work with. Let's create circle r = 3 cm in the center of our mesh.
+real_solution = objects2d.ellipse(mesh, center=(5, 5), ax_len=(3, 3))
+# An easy way to visualize this object is using plot2d() function of the Model class.
+# To do this let's create our model and  assign real_solution to it's solution.
+mod = model.Model(mesh=mesh, solution=real_solution)
+mod.plot2d()
+# You should see a discrete circle. Now let's pretend that solution is unknown.
+mod.solution = None
+
+# We will start with the ideal case: no signal noise and number of detectors > number of cells.
+# Let's create 30 fan detectors around the target. 40 detectors in each fan.
+det = detectors2d.fan_detector_array(mesh=mesh,
+                                     focus_point=(5, 5),
+                                     radius=11,
+                                     fan_num=30,
+                                     line_num=40,
+                                     width=0.5,
+                                     divergence=0.05)
+mod.detector_geometry = det
+
+# Next step is to simulate each detector signal.
+det_signal = signal.get_signal(real_solution, det)
+mod.detector_signal = det_signal
+
+# Now let's create solver which will use ART with step = 0.1 in order to find the solution.
+solver = solver.Solver()
+solver.iterator = algebraic.ART()
+solver.iterator.alpha = 0.1
+# When you are using ART, often a good idea is to suggest that all values are positive.
+c1 = tomomak.constraints.basic.Positive()
+solver.constraints_array = [c1]
+
+# Finally we want some quantitative parameters in order to evaluate reconstruction results.
+# Let's count residual mean square and residual norm.
+solver.stat_array = [statistics.rms, statistics.rn]
+# In order to get RMS real solution should be defined.
+solver.real_solution = real_solution
+
+# Ok, it's time to solve. Let's do 1000 iterations and see the results.
+steps = 1000
+solver.solve(mod, steps)
+mod.plot2d()
+# There are some artifacts but generally picture looks pretty good.
+# Now let's plot the statistics.
+plt.plot(solver.statistics) #!!!!!!
+plt.show()
+# You can see that both RMS and RN quickly fall during several first steps
+# and than begin to slowly reach zero. !!!reach
+# You can check yourself that after more iterations
+# for the naked eye calculated solution will look exactly like the real one. Just uncomment two following lines.
+# solver.solve(mod, 30000)
+# mod.plot2d()
+
+# This was pretty easy and pretty unrealistic.
+# In the real world applications (especially
+# if you work with the limited data tomography)
+# you will not meet such conditions.
+# Let's consider our first case: limited data. In this example we will use only 10 fans with 30 detectors,
+# while mesh is still consist of 30x30 cells.
+limited_det = detectors2d.fan_detector_array(mesh=mesh,
+                                             focus_point=(5, 5),
+                                             radius=11,
+                                             fan_num=10,
+                                             line_num=30,
+                                             width=0.5,
+                                             divergence=0.1)
+
+mod.detector_signal = None
+mod.detector_geometry = limited_det
+mod.detector_signal = signal.get_signal(real_solution, limited_det)
+
+# Now we repeat previous steps and see the results.
+solver.statistics = []
+mod.solution = None
+solver.solve(mod, steps)
+mod.plot2d()
+plt.plot(solver.statistics) #!!!!!!
+plt.show()
+# The image became more noisy. Also you can notice, that RMS and RN no longer reaching zero.
+# They are limited by some value. That is the price you pay for the low number of the detectors.
+
+# Now let's consider high measurements error. For example, this may happen when your detectors are poorly calibrated,
+# detector signal has statistical nature, or you don't know exact geometry of the experiment.
+# We go back to our 40x30 detectors case but with some Gaussian noises.
+mod.detector_signal = None
+mod.detector_geometry = det
+noisy_det_signal = signal.add_noise(det_signal, 5)
+mod.detector_signal = noisy_det_signal
+
+# We will do the reconstruction in several steps, and see what happens.
+solver.statistics = []
+mod.solution = None
+steps = 20
+for _ in range(5):
+    solver.solve(mod, steps)
+    mod.plot2d()
+# The first image you see is pretty noisy, but it's only a part of the problem:
+# unlike the previous cases, our solution become worse, when we increase the number of steps.
+
+# Let's see the statistics.
+plt.plot(solver.statistics) #!!!!!!
+plt.show()
+# You can see, that RN is decreasing at every step since that is what we are doing - decreasing with our iterator.
+# RMS, however, at some point starts to increase - that's what we save during our investigation.
+
+# A possible solution to this problem is to use early stopping criteria. This will be discussed in other tutorial.
+# Here we will use another trick - additional constraint.
+# It is possible to apply 1D function along specific axis at each reconstruction step.
+# We will apply scipy.ndimage.gaussian_filter1d
+func = scipy.ndimage.gaussian_filter1d
+c2 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=0, alpha=0.1, sigma=1)
+c3 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=1, alpha=0.1, sigma=1)
+solver.constraints_array = [c1, c2, c3]
+# Now we are ready to reconstruct
+mod.solution = None
+solver.statistics = []
+steps = 100
+solver.solve(mod, steps)
+mod.plot2d()
+plt.plot(solver.statistics) #!!!!!!
+plt.show()
+# Well, the result is clearly better. More importantly our solution converges now.
+
+# The question is: what gaussian_filter1d parameters should we use?
+# In order to answer this question we should do hyperparameter optimization.
+# Let's implement grid search method which suggest trying many different parameter combinations.
+#  We will try some alphas and sigmas and store RMS after 100 steps for each combination. This will take some time.
+res = ""
+dat = []
+mod.solution = None
+solver.statistics = []
+for alpha in np.linspace(0.01, 0.32, 30):
+    for sig in np.linspace(0.2, 2, 20):
+        mod.solution = None
+        c1 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=0, alpha=alpha, sigma=sig)
+        c2 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=1, alpha=alpha, sigma=sig)
+        solver.constraints_array = [tomomak.constraints.basic.Positive(), c1, c2]
+        solver.solve(mod, steps=steps)
+        res += "alpha = {}, sigma = {}, rms = {}\n".format(alpha, sig, solver.statistics[-1][0])
+        new_dat = [alpha, sig, solver.statistics[-1][0]]
+        dat.append(new_dat)
+
+# Let's see the graph.
+###!!!
+
+# There is clear region with low estimated RMS. Let's find minimum
+alpha =
+sigma =
+func = scipy.ndimage.gaussian_filter1d
+c2 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=0, alpha=alpha, sigma=sigma)
+c3 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=1, alpha=alpha, sigma=sigma)
+solver.constraints_array = [c1, c2, c3]
+mod.solution = None
+solver.statistics = []
+steps = 100
+solver.solve(mod, steps)
+mod.plot2d()
+plt.plot(solver.statistics) #!!!!!!
+plt.show()
+
+# This is much better. However don't forget, that parameters we choose
+# are the best parameter only for our specific synthetic case.
+# If you apply new noise, you will see, that it is true. Good news, that this parameters
+# are likely to give you not the best, but almost the best result.
+
+# In this tutorial you've learnt about limited data reconstruction.
+# Saw how noisy detector signals influence reconstruction results.
+# And tried some tricks to deal with this problem.

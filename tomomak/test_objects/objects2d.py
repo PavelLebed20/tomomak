@@ -76,24 +76,24 @@ def rectangle(mesh, center=(0, 0), size=(10, 10), index=(0, 1), density=1, broad
 
 
 def ellipse(mesh, center=(0, 0), ax_len=(5, 5), index=(0, 1), density=1, resolution=32, broadcast=True):
-    """Create solution array, representing 2d ellipse, defined by specified parameters.
+    """Create solution array, representing 2d real_solution, defined by specified parameters.
 
     Only cartesian axes (tomomak.main_structures.mesh.cartesian) are supported.
     Shapely module is used for calculation.
 
     Args:
         mesh(tomomak.main_structures.Mesh): mesh to work with.
-        center(tuple of int, optional): Center of the ellipse, given by tuples with 2 elements(x, y). default: (0, 0).
-        ax_len (tuple of int, optional): Half-width and Half-height of the ellipse,
+        center(tuple of int, optional): Center of the real_solution, given by tuples with 2 elements(x, y). default: (0, 0).
+        ax_len (tuple of int, optional): Half-width and Half-height of the real_solution,
             given by tuples with 2 elements (a, b). default: (5, 5).
         index(tuple of two ints, optional): axes to build object at. Default:  (0,1)
         density(float, optional): Object density. default: 1.
-        resolution(integer, optional): Relative number of points, approximating ellipse. default: 32.
+        resolution(integer, optional): Relative number of points, approximating real_solution. default: 32.
         broadcast(bool, optional) If true, resulted array is broadcasted to fit Mesh shape.
             If False, 2d array is returned, even if Mesh is not 2D. Default: True.
 
     Returns:
-        ndarray: 2D numpy array, representing ellipse on the given mesh.
+        ndarray: 2D numpy array, representing real_solution on the given mesh.
 
     Raises:
         TypeError if one of the axes is not  cartesian (tomomak.main_structures.mesh.cartesian).
@@ -143,7 +143,7 @@ def pyramid(mesh, center=(0, 0), size=(10, 10), index=(0, 1), height=1, broadcas
 
 
 def cone(mesh, center=(3, 4), ax_len=(4, 3), index=(0, 1), height=1, cone_type='cone', resolution=32, broadcast=True):
-    """Create solution array, representing  2d ellipse defined by specified parameters
+    """Create solution array, representing  2d real_solution defined by specified parameters
         with density changing as height of the elliptical cone .
 
     Only cartesian axes (tomomak.main_structures.mesh.cartesian) are supported.
@@ -151,13 +151,13 @@ def cone(mesh, center=(3, 4), ax_len=(4, 3), index=(0, 1), height=1, cone_type='
 
     Args:
         mesh(tomomak.main_structures.Mesh): mesh to work with.
-        center(tuple of int, optional): Center of the ellipse, given by tuples with 2 elements(x, y). default: (0, 0).
-        ax_len (tuple of int, optional): Half-width and Half-height of the base ellipse,
+        center(tuple of int, optional): Center of the real_solution, given by tuples with 2 elements(x, y). default: (0, 0).
+        ax_len (tuple of int, optional): Half-width and Half-height of the base real_solution,
             given by tuples with 2 elements (a, b). default: (5, 5).
         index(tuple of two ints, optional): axes to build object at. Default:  (0,1)
         height(float, optional): Cone max height. Minimum height is 0. default: 1
         cone_type(str, {'cone', 'paraboloid', 'paraboloid_h'}, optional): Shape of cone.
-        resolution(integer, optional): Relative number of points, approximating base ellipse. default: 32.
+        resolution(integer, optional): Relative number of points, approximating base real_solution. default: 32.
         broadcast(bool, optional) If true, resulted array is broadcasted to fit Mesh shape.
              If False, 2d array is returned, even if Mesh is not 2D. Default: True.
 
