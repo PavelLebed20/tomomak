@@ -4,7 +4,54 @@ import numbers
 import numpy as np
 
 
-class AbstractIterator(ABC):
+class AbstractSolverClass(ABC):
+    """
+        """
+
+    def __init__(self):
+        """
+
+        """
+    @abstractmethod
+    def init(self, model, steps, *args, **kwargs):
+        """
+
+        :return:
+        """
+
+    @abstractmethod
+    def finalize(self, model):
+
+        """
+
+        Returns:
+
+        """
+
+    @abstractmethod
+    def step(self, model, step_num):
+        """Use this (alpha = super().step(model, step_num)) to get alpha/
+
+        Args:
+            model:
+            step_num
+
+        Returns:
+            None
+
+        """
+
+    @abstractmethod
+    def __str__(self):
+        """Return name or name with parameters.
+
+        Returns:
+            str:
+
+        """
+
+
+class AbstractIterator(AbstractSolverClass):
     """
     """
     def __init__(self, alpha=0.1, alpha_calc=None):
@@ -20,6 +67,7 @@ class AbstractIterator(ABC):
             if self.alpha is not None:
                 self._alpha = None
                 warnings.warn("Since alpha_calc is defined in {}, alpha is Ignored.".format(self))
+            self.alpha_calc.init(model, steps, *args, **kwargs)
         else:
             if isinstance(self.alpha, numbers.Number):
                 self._alpha = np.full(steps, self.alpha)
@@ -32,15 +80,6 @@ class AbstractIterator(ABC):
         :return:
         """
 
-    @abstractmethod
-    def finalize(self, model):
-
-        """
-
-        Returns:
-
-        """
-
     def get_alpha(self, model, step_num):
         """Use this to get alpha.
         """
@@ -50,25 +89,8 @@ class AbstractIterator(ABC):
             alpha = self._alpha[step_num]
         return alpha
 
-    @abstractmethod
-    def step(self, model, step_num):
-        """Use this (alpha = super().step(model, step_num)) to get alpha/
 
-        Args:
-            model:
-            step_num
+class AbstractStatistics(AbstractSolverClass):
+    """
 
-        Returns:
-            None
-
-        """
-
-
-    @abstractmethod
-    def __str__(self):
-        """Return name or name with parameters.
-
-        Returns:
-            str:
-
-        """
+    """

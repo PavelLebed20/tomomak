@@ -2,10 +2,10 @@ from ..iterators import abstract_iterator
 import numpy as np
 
 
-class Positive(abstract_iterator.AbstractIterator):
+class Positive(abstract_iterator.AbstractSolverClass):
 
     def __init__(self):
-        super().__init__(None, None)
+        pass
 
     def init(self, model, steps, *args, **kwargs):
         pass

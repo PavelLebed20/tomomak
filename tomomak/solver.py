@@ -7,13 +7,11 @@ import copy
 class Solver:
     """
     Args:
-        alpha(float of iterable of floats):
+
     """
-    def __init__(self, iterator=None, alpha=0.1, alpha_calc=None, constraints_array=None, stat_array=None,
+    def __init__(self, iterator=None, constraints_array=None, stat_array=None,
                  stop_array=None, stop_values=None, real_solution=None):
         self.iterator = iterator
-        self.alpha = alpha
-        self.alpha_calc = alpha_calc
         self.constraints_array = constraints_array
         self.stat_array = stat_array
         self.stop_values = stop_values
@@ -42,9 +40,6 @@ class Solver:
             print("Used constraints:")
             for c in self.constraints_array:
                 print(c)
-        if self.alpha_calc is not None:
-            self.alpha_calc.init(model, steps, *args, **kwargs)
-            print("Method of step calculation: {}".format(self.alpha_calc))
 
         # Start iteration
         for i in range(steps):
@@ -84,6 +79,4 @@ class Solver:
         if self.constraints_array is not None:
             for r in self.constraints_array:
                 r.finalize(model)
-        if self.alpha_calc is not None:
-            self.alpha_calc.finalize(model)
 
