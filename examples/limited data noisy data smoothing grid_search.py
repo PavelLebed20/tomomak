@@ -51,81 +51,78 @@ solver.iterator = algebraic.ART()
 solver.iterator.alpha = 0.1
 # When you are using ART, often a good idea is to suggest that all values are positive.
 c1 = tomomak.constraints.basic.Positive()
-solver.constraints_array = [c1]
+solver.constraints = [c1]
 
 # Finally we want some quantitative parameters in order to evaluate reconstruction results.
 # Let's count residual mean square and residual norm.
-solver.stat_array = [statistics.rms, statistics.rn]
+solver.statistics = [statistics.RMS(), statistics.RN()]
 # In order to get RMS real solution should be defined.
 solver.real_solution = real_solution
 
-# # Ok, it's time to solve. Let's do 1000 iterations and see the results.
-# steps = 1000
-# solver.solve(mod, steps)
+# Ok, it's time to solve. Let's do 1000 iterations and see the results.
+steps = 1000
+solver.solve(mod, steps)
+mod.plot2d()
+# There are some artifacts but generally picture looks pretty good.
+# Now let's plot the statistics.
+solver.plot_statistics()
+# You can see that both RMS and RN quickly fall during several first steps
+# and than begin to slowly reach zero. !!!reach
+# You can check yourself that after more iterations
+# for the naked eye calculated solution will look exactly like the real one. Just uncomment two following lines.
+# solver.solve(mod, 30000)
 # mod.plot2d()
-# # There are some artifacts but generally picture looks pretty good.
-# # Now let's plot the statistics.
-# plt.plot(solver.statistics) #!!!!!!
-# plt.show()
-# # You can see that both RMS and RN quickly fall during several first steps
-# # and than begin to slowly reach zero. !!!reach
-# # You can check yourself that after more iterations
-# # for the naked eye calculated solution will look exactly like the real one. Just uncomment two following lines.
-# # solver.solve(mod, 30000)
-# # mod.plot2d()
-#
-# # This was pretty easy and pretty unrealistic.
-# # In the real world applications (especially
-# # if you work with the limited data tomography)
-# # you will not meet such conditions.
-# # Let's consider our first case: limited data. In this example we will use only 10 fans with 30 detectors,
-# # while mesh is still consist of 30x30 cells.
-# limited_det = detectors2d.fan_detector_array(mesh=mesh,
-#                                              focus_point=(5, 5),
-#                                              radius=11,
-#                                              fan_num=10,
-#                                              line_num=30,
-#                                              width=0.5,
-#                                              divergence=0.1)
-#
-# mod.detector_signal = None
-# mod.detector_geometry = limited_det
-# mod.detector_signal = signal.get_signal(real_solution, limited_det)
-#
-# # Now we repeat previous steps and see the results.
-# solver.statistics = []
-# mod.solution = None
-# solver.solve(mod, steps)
-# mod.plot2d()
-# plt.plot(solver.statistics) #!!!!!!
-# plt.show()
-# # The image became more noisy. Also you can notice, that RMS and RN no longer reaching zero.
-# # They are limited by some value. That is the price you pay for the low number of the detectors.
-#
-# # Now let's consider high measurements error. For example, this may happen when your detectors are poorly calibrated,
-# # detector signal has statistical nature, or you don't know exact geometry of the experiment.
-# # We go back to our 40x30 detectors case but with some Gaussian noises.
+
+# This was pretty easy and pretty unrealistic.
+# In the real world applications (especially
+# if you work with the limited data tomography)
+# you will not meet such conditions.
+# Let's consider our first case: limited data. In this example we will use only 10 fans with 30 detectors,
+# while mesh is still consist of 30x30 cells.
+limited_det = detectors2d.fan_detector_array(mesh=mesh,
+                                             focus_point=(5, 5),
+                                             radius=11,
+                                             fan_num=10,
+                                             line_num=30,
+                                             width=0.5,
+                                             divergence=0.1)
+
+mod.detector_signal = None
+mod.detector_geometry = limited_det
+mod.detector_signal = signal.get_signal(real_solution, limited_det)
+
+# Now we repeat previous steps and see the results.
+solver.statistics = []
+mod.solution = None
+solver.solve(mod, steps)
+mod.plot2d()
+solver.plot_statistics()
+# The image became more noisy. Also you can notice, that RMS and RN no longer reaching zero.
+# They are limited by some value. That is the price you pay for the low number of the detectors.
+
+# Now let's consider high measurements error. For example, this may happen when your detectors are poorly calibrated,
+# detector signal has statistical nature, or you don't know exact geometry of the experiment.
+# We go back to our 40x30 detectors case but with some Gaussian noises.
 mod.detector_signal = None
 mod.detector_geometry = det
 noisy_det_signal = signal.add_noise(det_signal, 5)
 mod.detector_signal = noisy_det_signal
 
-# # We will do the reconstruction in several steps, and see what happens.
-# solver.statistics = []
-# mod.solution = None
-# steps = 20
-# for _ in range(5):
-#     solver.solve(mod, steps)
-#     mod.plot2d()
-# # The first image you see is pretty noisy, but it's only a part of the problem:
-# # unlike the previous cases, our solution become worse, when we increase the number of steps.
-#
-# # Let's see the statistics.
-# plt.plot(solver.statistics) #!!!!!!
-# plt.show()
-# # You can see, that RN is decreasing at every step since that is what we are doing - decreasing with our iterator.
-# # RMS, however, at some point starts to increase - that's what we save during our investigation.
-#
+# We will do the reconstruction in several steps, and see what happens.
+solver.statistics = []
+mod.solution = None
+steps = 20
+for _ in range(5):
+    solver.solve(mod, steps)
+    mod.plot2d()
+# The first image you see is pretty noisy, but it's only a part of the problem:
+# unlike the previous cases, our solution become worse, when we increase the number of steps.
+
+# Let's see the statistics.
+solver.plot_statistics()
+# You can see, that RN is decreasing at every step since that is what we are doing - decreasing with our iterator.
+# RMS, however, at some point starts to increase - that's what we save during our investigation.
+
 # A possible solution to this problem is to use early stopping criteria. This will be discussed in other tutorial.
 # Here we will use another trick - additional constraint.
 # It is possible to apply 1D function along specific axis at each reconstruction step.
@@ -133,15 +130,14 @@ mod.detector_signal = noisy_det_signal
 func = scipy.ndimage.gaussian_filter1d
 c2 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=0, alpha=0.1, sigma=1)
 c3 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=1, alpha=0.1, sigma=1)
-solver.constraints_array = [c1, c2, c3]
+solver.constraints = [c1, c2, c3]
 # Now we are ready to reconstruct
 mod.solution = None
 solver.statistics = []
 steps = 100
 solver.solve(mod, steps)
 mod.plot2d()
-plt.plot(solver.statistics) #!!!!!!
-plt.show()
+solver.plot_statistics()
 # Well, the result is clearly better. More importantly our solution converges now.
 
 # The question is: what gaussian_filter1d parameters should we use?
@@ -158,7 +154,7 @@ for alpha in np.linspace(0.01, 0.3, 20):
         mod.solution = None
         c1 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=0, alpha=alpha, sigma=sig)
         c2 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=1, alpha=alpha, sigma=sig)
-        solver.constraints_array = [tomomak.constraints.basic.Positive(), c1, c2]
+        solver.constraints = [tomomak.constraints.basic.Positive(), c1, c2]
         solver.solve(mod, steps=steps)
         res += "alpha = {}, sigma = {}, rms = {}\n".format(alpha, sig, solver.statistics[-1][0])
         new_dat = [alpha, sig, solver.statistics[-1][0]]
@@ -173,7 +169,7 @@ z_list = np.array(dat)[:, 2]
 N = int(len(z_list)**.5)
 z = z_list.reshape(N, N)
 plt.imshow(z, extent=(np.amin(x_list), np.amax(x_list), np.amin(y_list), np.amax(y_list)),
-                     norm=LogNorm(), aspect = 'auto')
+           norm=LogNorm(), aspect='auto')
 plt.title("RMS(alpha, sigma)")
 plt.xlabel("alpha")
 plt.ylabel("sigma")
@@ -190,14 +186,13 @@ print("alpha = {}, sigma = {}, RMS = {}".format(alpha, sigma, dat[min_ind][2] ))
 func = scipy.ndimage.gaussian_filter1d
 c2 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=0, alpha=alpha, sigma=sigma)
 c3 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=1, alpha=alpha, sigma=sigma)
-solver.constraints_array = [c1, c2, c3]
+solver.constraints = [c1, c2, c3]
 mod.solution = None
 solver.statistics = []
 steps = 100
 solver.solve(mod, steps)
 mod.plot2d()
-plt.plot(solver.statistics) #!!!!!!
-plt.show()
+solver.plot_statistics()
 
 # This is much better. However don't forget, that parameters we choose
 # are the best parameter only for our specific synthetic case.

@@ -1,104 +1,187 @@
 import numpy as np
 from tomomak.detectors import signal
+from tomomak.iterators.abstract_iterator import AbstractStatistics
 
 
-def rms(solution, real_solution, *args, **kwargs):
-    """Returns a normalized root mean square error
+class RMS(AbstractStatistics):
+    """Calculate normalized root mean square error.
 
+    RMS is between calculated and real solution.
     Real solution should be defined in order to get RMS: to do this set real_solution member of solver object.
 
-    Args:
-        solution(ndarray): supposed solution.
-        real_solution(ndarray): known solution.
-        *args, **kwargs: not used, but needed to be here in order to work with Solver properly.
+    """
+    def step(self, model, solution, real_solution, *args, **kwargs):
+        """Calculate a normalized root mean square error at current step
 
-    Returns:
-        float: normalized RMS.
+        Args:
+            solution(ndarray): supposed solution.
+            real_solution(ndarray): known solution.
+            *args, **kwargs: not used, but needed to be here in order to work with Solver properly.
+
+        Returns:
+            float: normalized RMS.
+
+        """
+        res = solution - real_solution
+        res = np.square(res)
+        res = np.sum(res)
+        tmp = np.sum(np.square(solution))
+        if tmp != 0:
+            res =  np.sqrt(res / tmp) * 100
+        else:
+            res = float("inf")
+        self.data.append(res)
+        return res
+
+    def init(self, model, steps, *args, **kwargs):
+        pass
+
+    def finalize(self, model):
+        pass
+
+    def __str__(self):
+        return "RMS, %"
+
+
+class RN(AbstractStatistics):
+    """Calculate Residual Norm.
+
+    RN is between calculated and measured signal.
+    """
+
+    def step(self, model, solution, real_solution, *args, **kwargs):
+        """Residual norm at current step.
+
+        Args:
+            model(tomomak.Model): used model.
+            real_solution(ndarray): known solution.
+            *args, **kwargs: not used, but needed to be here in order to work with Solver properly.
+
+        Returns:
+            float: residual norm
+
+        """
+        norm = model.detector_signal - signal.get_signal(model.solution, model.detector_geometry)
+        norm = np.square(norm)
+        res = np.sqrt(np.sum(norm))
+        self.data.append(res)
+        return res
+
+    def init(self, model, steps, *args, **kwargs):
+        pass
+
+    def finalize(self, model):
+        pass
+
+    def __str__(self):
+        return "RN"
+
+
+class ChiSq(AbstractStatistics):
+    """Chi^2 statistics at current step.
+
+    Chi^2 is between calculated and real solution.
+    Real solution should be defined in order to get Chi^2: to do this set real_solution member of solver object.
 
     """
-    res = solution - real_solution
-    res = np.square(res)
-    res = np.sum(res)
-    tmp = np.sum(np.square(solution))
-    if tmp != 0:
-        return np.sqrt(res / tmp)
-    else:
-        return float("inf")
+
+    def step(self, model, solution, real_solution, *args, **kwargs):
+        """Chi^2 statistics.
+
+        Note, that fo usage in feasibility method chi^2 should be divided by number of detectors.
+        Args:
+            solution(ndarray): supposed solution.
+            real_solution(ndarray): known solution.
+            *args, **kwargs: not used, but needed to be here in order to work with Solver properly.
+
+        Returns:
+            float: chi^2.
+
+        """
+        chi = solution - real_solution
+        chi = chi ** 2
+        chi = np.divide(chi, real_solution, out=np.zeros_like(chi), where=real_solution != 0)
+        res = np.sum(chi)
+        self.data.append(res)
+        return res
+
+    def init(self, model, steps, *args, **kwargs):
+        pass
+
+    def finalize(self, model):
+        pass
+
+    def __str__(self):
+        return "chi-square"
 
 
-def rn(model, real_solution, *args, **kwargs):
-    """Residual norm.
-
-    Args:
-        model(tomomak.Model): used model.
-        real_solution(ndarray): known solution.
-        *args, **kwargs: not used, but needed to be here in order to work with Solver properly.
-
-    Returns:
-        float: residual norm
-
+class CorrCoef(AbstractStatistics):
+    """Calculate correlation coefficient, used for stopping criterion.
     """
-    norm = np.subtract(model.detector_signal, signal.get_signal(model.solution, model.detector_geometry))
-    norm = np.square(norm)
-    return np.sqrt(np.sum(norm))
+    def step(self, model, solution, old_solution, *args, **kwargs):
+        """Correlation coefficient at current step.
+
+        See Craciunescu et al., Nucl. Instr. and Meth. in Phys. Res. A595 2008 623-630.
+
+        Args:
+            model(tomomak.Model): used model.
+            solution(ndarray): supposed solution.
+            old_solution(ndarray): supposed_solution at a previous iteration.
+
+        Returns:
+            float: correlation coefficient.
+        """
+        det_num = model.detector_signal.shape[0]
+        det_num2 = det_num**2
+        f_s = np.sum(old_solution)
+        f_new_s = np.sum(solution)
+        corr= det_num2 * np.sum(np.multiply(solution, old_solution))
+        corr = corr - f_s * f_new_s
+        divider = det_num2 * np.sum(np.multiply(solution, solution))
+        tmp = f_new_s**2
+        divider = np.sqrt(divider - tmp)
+        corr = corr / divider
+        divider = det_num2 * np.sum(np.multiply(old_solution, old_solution))
+        tmp = f_s**2
+        divider = np.sqrt(divider - tmp)
+        res = corr / divider
+        self.data.append(res)
+        return res
+
+    def init(self, model, steps, *args, **kwargs):
+        pass
+
+    def finalize(self, model):
+        pass
+
+    def __str__(self):
+        return "cor. coef."
 
 
-def chi_sc(solution, real_solution, *args, **kwargs):
-    """Chi^2 statistics.
-
-    Note, that fo usage in feasibility method chi^2 should be divided by number of detectors.
-    Args:
-        solution(ndarray): supposed solution.
-        real_solution(ndarray): known solution.
-        *args, **kwargs: not used, but needed to be here in order to work with Solver properly.
-
-    Returns:
-        float: chi^2.
-
+class Convergence(AbstractStatistics):
+    """calculate d(solution) / solution * 100%.
     """
-    chi = np.subtract(solution, real_solution)
-    chi = np.multiply(chi, chi)
-    chi = np.divide(chi, real_solution, out=np.zeros_like(chi), where=real_solution!=0)
-    return np.sum(chi)
 
+    def step(self, solution, old_solution, *args, **kwargs):
+        """calculate d(solution) / solution * 100%.
 
-def corr_coef(model, solution, old_solution, *args, **kwargs):
-    """Returns correlation coefficient, used for stopping criterion
+        Args:
+            solution(ndarray): supposed solution.
+            old_solution(ndarray): solution at previous step
 
-    See Craciunescu et al., Nucl. Instr. and Meth. in Phys. Res. A595 2008 623-630.
+        Returns:
+            float: ds/s, %
 
-    Args:
-        model(tomomak.Model): used model.
-        solution(ndarray): supposed solution.
-        old_solution(ndarray): supposed_solution at a previous iteration.
+        """
+        res = np.sum(np.abs(solution - old_solution)) / np.abs(np.sum(solution)) * 100
+        self.data.append(res)
+        return res
 
-    Returns:
-        float: correlation coefficient.
-    """
-    det_num = model.detector_signal.shape[0]
-    det_num2 = det_num**2
-    f_s = np.sum(old_solution)
-    f_new_s = np.sum(solution)
-    corr= det_num2 * np.sum(np.multiply(solution, old_solution))
-    corr = corr - f_s * f_new_s
-    divider = det_num2 * np.sum(np.multiply(solution, solution))
-    tmp = f_new_s**2
-    divider = np.sqrt(divider - tmp)
-    corr = corr / divider
-    divider = det_num2 * np.sum(np.multiply(old_solution, old_solution))
-    tmp = f_s**2
-    divider = np.sqrt(divider - tmp)
-    return corr / divider
+    def init(self, model, steps, *args, **kwargs):
+        pass
 
-def convergence(solution, old_solution, *args, **kwargs):
-    """Returns d(solution) / solution.
+    def finalize(self, model):
+        pass
 
-    Args:
-        solution(ndarray): supposed solution.
-        old_solution(ndarray): solution at previous step/
-
-    Returns:
-        float: ds/s
-
-    """
-    return np.sum(np.abs(solution - old_solution)) / np.abs(np.sum(solution))
+    def __str__(self):
+        return "ds/s, %"

@@ -22,7 +22,7 @@ class TestBasic(unittest.TestCase):
         solver = Solver()
         steps = 1
         c = tomomak.constraints.basic.ApplyAlongAxis(sorted, axis=0, alpha=1)
-        solver.constraints_array = [c]
+        solver.constraints = [c]
         solver.solve(mod, steps=steps)
         assert all(np.diff(mod.solution) >= 0)
 
@@ -39,7 +39,7 @@ class TestBasic(unittest.TestCase):
         solver = Solver()
         steps = 1
         c = tomomak.constraints.basic.ApplyFunction(scipy.ndimage.gaussian_filter, sigma=1, alpha=1)
-        solver.constraints_array = [c]
+        solver.constraints = [c]
         solver.solve(mod, steps=steps)
         assert not np.all(np.diff(mod.solution))
 

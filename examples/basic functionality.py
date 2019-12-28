@@ -37,23 +37,25 @@ mod.plot2d(data_type='detector_geometry')
 
 
 solver = Solver()
-steps = 500
+steps = 50
 solver.real_solution = solution
-solver.stat_array = [statistics.rms]
+solver.statistics = [statistics.RMS(), statistics.RN(), statistics.ChiSq(),
+                     statistics.CorrCoef(), statistics.Convergence()]
 solver.iterator = algebraic.ART()
 solver.iterator.alpha = 0.1
-solver.constraints_array = [tomomak.constraints.basic.Positive()]
+solver.constraints = [tomomak.constraints.basic.Positive()]
 solver.solve(mod, steps=steps)
 mod.plot2d()
+solver.plot_statistics()
 
 solver.iterator = ml.ML()
-solver.stop_array = [statistics.rms]
+solver.stop_conditions = [statistics.RMS()]
 solver.stop_values = [0.07]
 steps = 1000
 solver.solve(mod, steps=steps)
 mod.plot2d()
 
-plt.plot(solver.statistics)
+solver.plot_statistics()
 plt.show()
 
 

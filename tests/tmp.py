@@ -50,7 +50,7 @@ solver.iterator = ml.ML()
 # solver.alpha = cp.linspace(1, 1, steps)
 #solver.iterator = gpu.MLCuda()
 #solver.iterator.alpha = cp.linspace(1, 1, steps)
-solver.stat_array = [statistics.rms]
+solver.statistics = [statistics.rms]
 # solver.alpha = np.linspace(1, 1, steps)
 #solver.iterator = algebraic.ART()
 #solver.iterator = algebraic.SIRT(n_slices=3, iter_type='SIRT')
@@ -61,10 +61,10 @@ func = scipy.ndimage.gaussian_filter1d
 #c2 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=0, alpha=1, sigma=2)
 c2 = tomomak.constraints.basic.ApplyFunction(scipy.ndimage.gaussian_filter, sigma=1, alpha=1)
 # c3 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=1, alpha=1, sigma=2)
-solver.constraints_array = [tomomak.constraints.basic.Positive(), c2]
+solver.constraints = [tomomak.constraints.basic.Positive(), c2]
 import time
 start_time = time.time()
-solver.stop_array = [statistics.rms]
+solver.stop_conditions = [statistics.rms]
 solver.stop_values = [0.2]
 solver.solve(mod, steps = steps)
 print("--- %s seconds ---" % (time.time() - start_time))

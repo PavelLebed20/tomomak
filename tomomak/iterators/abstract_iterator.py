@@ -2,16 +2,13 @@ from abc import ABC, abstractmethod
 import warnings
 import numbers
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class AbstractSolverClass(ABC):
     """
         """
 
-    def __init__(self):
-        """
-
-        """
     @abstractmethod
     def init(self, model, steps, *args, **kwargs):
         """
@@ -91,6 +88,35 @@ class AbstractIterator(AbstractSolverClass):
 
 
 class AbstractStatistics(AbstractSolverClass):
-    """
+    """Abstract class for statistics calculator in solver.
+
+    Attributes:
+        data: Step-by-Step statistics data. Usually 1D Iterable.
 
     """
+
+    @abstractmethod
+    def step(self, model, solution, real_solution, *args, **kwargs):
+        """Step function.
+
+        Calculated value should be appended to self.data as well as returned.
+
+        Args:
+            model:
+            step_num
+
+        Returns:
+            number: statistics calculation result at current step. Needed in order to use as early stopping criteria.
+
+        """
+
+
+    def __init__(self):
+        self.data = []
+
+    def plot(self):
+        plt.plot(self.data)
+        plt.yscale('log')
+        plt.ylabel(str(self))
+
+
