@@ -92,7 +92,7 @@ mod.detector_geometry = limited_det
 mod.detector_signal = signal.get_signal(real_solution, limited_det)
 
 # Now we repeat previous steps and see the results.
-solver.statistics = []
+solver.refresh_statistics()
 mod.solution = None
 solver.solve(mod, steps)
 mod.plot2d()
@@ -109,7 +109,7 @@ noisy_det_signal = signal.add_noise(det_signal, 5)
 mod.detector_signal = noisy_det_signal
 
 # We will do the reconstruction in several steps, and see what happens.
-solver.statistics = []
+solver.refresh_statistics()
 mod.solution = None
 steps = 20
 for _ in range(5):
@@ -133,7 +133,7 @@ c3 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=1, alpha=0.1, sigma=1)
 solver.constraints = [c1, c2, c3]
 # Now we are ready to reconstruct
 mod.solution = None
-solver.statistics = []
+solver.refresh_statistics()
 steps = 100
 solver.solve(mod, steps)
 mod.plot2d()
@@ -147,22 +147,21 @@ solver.plot_statistics()
 res = ""
 dat = []
 mod.solution = None
-solver.statistics = []
+solver.refresh_statistics()
 steps = 100
 for alpha in np.linspace(0.01, 0.3, 20):
     for sig in np.linspace(0.1, 2, 20):
         mod.solution = None
+        solver.refresh_statistics()
         c1 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=0, alpha=alpha, sigma=sig)
         c2 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=1, alpha=alpha, sigma=sig)
         solver.constraints = [tomomak.constraints.basic.Positive(), c1, c2]
         solver.solve(mod, steps=steps)
-        res += "alpha = {}, sigma = {}, rms = {}\n".format(alpha, sig, solver.statistics[-1][0])
-        new_dat = [alpha, sig, solver.statistics[-1][0]]
+        res += "alpha = {}, sigma = {}, rms = {}\n".format(alpha, sig, solver.statistics[0].data[-1])
+        new_dat = [alpha, sig, solver.statistics[0].data[-1]]
         dat.append(new_dat)
 
 # Let's see the graph.
-
-
 x_list = np.array(dat)[:, 0]
 y_list = np.array(dat)[:, 1]
 z_list = np.array(dat)[:, 2]
@@ -177,18 +176,17 @@ plt.colorbar()
 plt.show()
 
 # There is clear region with low estimated RMS. Let's find a minimum.
-stat = np.array(solver.statistics)
 min_ind = np.argmin(np.array(dat)[:, 2])
 alpha = dat[min_ind][0]
 sigma = dat[min_ind][1]
 print(dat)
-print("alpha = {}, sigma = {}, RMS = {}".format(alpha, sigma, dat[min_ind][2] )) #check!!
+print("alpha = {}, sigma = {}, RMS = {}".format(alpha, sigma, dat[min_ind][2]))
 func = scipy.ndimage.gaussian_filter1d
 c2 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=0, alpha=alpha, sigma=sigma)
 c3 = tomomak.constraints.basic.ApplyAlongAxis(func, axis=1, alpha=alpha, sigma=sigma)
 solver.constraints = [c1, c2, c3]
 mod.solution = None
-solver.statistics = []
+solver.refresh_statistics()
 steps = 100
 solver.solve(mod, steps)
 mod.plot2d()

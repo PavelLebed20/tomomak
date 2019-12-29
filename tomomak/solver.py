@@ -106,3 +106,10 @@ class Solver:
         plt.show()
         return axes
 
+    def refresh_statistics(self):
+        if self.statistics is not None:
+            for s in self.statistics:
+                s.data = []
+        else:
+            raise Exception("No statistics available.")
+        print("All collected statistics was deleted.")

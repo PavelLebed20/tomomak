@@ -83,8 +83,20 @@ class Abstract1dAxis(AbstractAxis):
 
         """
 
+    @abstractmethod
     def intersection(self, axis2):
         """Intersection length of each cell with each cell of another axis as 2D array.
+
+        Args:
+            axis2:
+
+        Returns:
+
+        """
+
+    @abstractmethod
+    def cell_edges2d(self, axis2):
+        """
 
         Args:
             axis2:
