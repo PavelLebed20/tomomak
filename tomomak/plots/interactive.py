@@ -34,7 +34,7 @@ class DetectorPlotSlicer:
         new_title = 'Detector {}/{}'.format(self.ind + 1, self.data.shape[0])
         self.ax.set_title(new_title)
         self.ax.relim()
-        self.ax.autoscale_view()
+
 
     def next(self, _):
         """Callback function for button Next.

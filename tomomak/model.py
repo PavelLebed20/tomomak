@@ -150,8 +150,8 @@ class Model:
             data = self._detector_geometry
         else:
             raise AttributeError("data type {} is unknown".format(data_type))
-        plot, ax = self._mesh.plot1d(data, index, data_type,  **kwargs)
-        return plot, ax
+        plot = self._mesh.plot1d(data, index, data_type,  **kwargs)
+        return plot
 
     def plot2d(self, index=0, data_type="solution", **kwargs):
         if data_type == "solution":
@@ -164,8 +164,23 @@ class Model:
             data = self._detector_geometry
         else:
             raise AttributeError("data type {} is unknown".format(data_type))
-        plot, ax = self._mesh.plot2d(data, index, data_type,  **kwargs)
-        return plot, ax
+        plot = self._mesh.plot2d(data, index, data_type,  **kwargs)
+        return plot
+
+    def plot3d(self, index=0, data_type="solution", **kwargs):
+        if data_type == "solution":
+            if self._solution is None:
+                raise Exception("Solution is not defined.")
+            data = self._solution
+        elif data_type == "detector_geometry":
+            if self._detector_geometry is None:
+                raise Exception("detector_geometry is not defined.")
+            data = self._detector_geometry
+        else:
+            raise AttributeError("data type {} is unknown".format(data_type))
+        plot = self._mesh.plot3d(data, index, data_type,  **kwargs)
+        return plot
+
 
     def save(self, fn):
         with open(fn, 'wb') as f:

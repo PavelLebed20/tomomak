@@ -7,6 +7,13 @@ import tomomak.util.text
 
 
 class Axis1d(abstract_axes.Abstract1dAxis):
+    """1D regular or irregular coordinate system.
+
+    Main tomomak coordinate system.
+    All transforms from or to other coordinate systems, plotting, etc.
+    are performed using this coordinate system as mediator.
+    If regular, than it is Cartesian coordinate system.
+    """
     def __init__(self, coordinates=None, edges=None, lower_limit=0, upper_limit=None, size=None, name="", units=""):
         super().__init__(name, units)
         if coordinates is not None:
@@ -82,48 +89,79 @@ class Axis1d(abstract_axes.Abstract1dAxis):
 
     @property
     def volumes(self):
+        """See description in abstract axes.
+        """
         return self._volumes
 
     @property
     def coordinates(self):
+        """See description in abstract axes.
+        """
         return self._coordinates
 
     @property
+    def cell_edges1d(self):
+        """See description in abstract axes.
+        """
+        return self._cell_edges
+
+    @property
     def cell_edges(self):
+        """See description in abstract axes.
+        """
         return self._cell_edges
 
     @property
     def size(self):
+        """See description in abstract axes.
+        """
         return self._size
 
     @property
     def regular(self):
+        """See description in abstract axes.
+        """
         if all(self._volumes - self._volumes[0] == 0):
             return True
         else:
             return False
 
     def cell_edges2d(self, axis2):
+        """See description in abstract axes.
+        """
         if type(axis2) is not Axis1d:
             raise NotImplementedError("Cell edges with such combination of axes are not supported.")
         shape = (self.size, axis2.size)
         res = np.zeros(shape).tolist()
-        edge1 = self.cell_edges
-        edge2 = axis2.cell_edges
+        edge1 = self.cell_edges1d
+        edge2 = axis2.cell_edges1d
         for i, row in enumerate(res):
             for j, _ in enumerate(row):
-                res[i][j] = ([(edge1[i], edge2[j]), (edge1[i + 1], edge2[j]),
-                              (edge1[i + 1], edge2[j + 1]), (edge1[i], edge2[j + 1])])
+                res[i][j] = [(edge1[i], edge2[j]), (edge1[i + 1], edge2[j]),
+                             (edge1[i + 1], edge2[j + 1]), (edge1[i], edge2[j + 1])]
+        return res
+
+    def cell_edges3d(self, axis2, axis3):
+        """See description in abstract axes.
+        """
+        if type(axis2) is not Axis1d or type(axis3) is not Axis1d:
+            raise NotImplementedError("Cell edges with such combination of axes are not supported.")
+        shape = (self.size, axis2.size, axis3.size)
+        res = np.zeros(shape).tolist()
+        edge1 = self.cell_edges1d
+        edge2 = axis2.cell_edges1d
+        edge3 = axis3.cell_edges1d
+        for i, row in enumerate(res):
+            for j, col in enumerate(row):
+                for k, _ in enumerate(col):
+                    res[i][j][k] = [(edge1[i], edge2[j], edge3[k]), (edge1[i + 1], edge2[j], edge3[k]),
+                                     (edge1[i + 1], edge2[j + 1], edge3[k]), (edge1[i + 1], edge2[j], edge3[k + 1]),
+                                     (edge1[i + 1], edge2[j + 1], edge3[k + 1]), (edge1[i], edge2[j + 1], edge3[k]),
+                                     (edge1[i], edge2[j + 1], edge3[k + 1]), (edge1[i], edge2[j], edge3[k + 1])]
         return res
 
     def intersection(self, axis2):
-        """Intersection length of each cell with each cell of another axis as 2D array.
-
-        Args:
-            axis2:
-
-        Returns:
-
+        """See description in abstract axes.
         """
         if type(axis2) is not Axis1d:
             raise TypeError("Cell edges with such combination of axes are not supported.")
@@ -138,8 +176,8 @@ class Axis1d(abstract_axes.Abstract1dAxis):
         j_start = 0
         for i, row in enumerate(intersection):
             for j in range(j_start, len(row)):
-                dist = inters_len(self.cell_edges[i], self.cell_edges[i + 1],
-                                  axis2.cell_edges[j], axis2.cell_edges[j + 1])
+                dist = inters_len(self.cell_edges1d[i], self.cell_edges1d[i + 1],
+                                  axis2.cell_edges1d[j], axis2.cell_edges1d[j + 1])
                 if not dist and j != j_start:
                     j_start = j-1
                     break
@@ -147,20 +185,35 @@ class Axis1d(abstract_axes.Abstract1dAxis):
         return intersection
 
     def plot1d(self, data, data_type='solution', filled=True,
-               fill_scheme='viridis', edgecolor='black', grid=False, equal_norm=False, *args, **kwargs):
-        """
+               fill_scheme='viridis', edge_color='black', grid=False, equal_norm=False, *args, **kwargs):
+        """Create 1D plot of the solution or detector geometry.
 
-        :return:
+        matplotlib bar plot is used. Detector data is plotted on the interactive graph.
+
+        Args:
+            data(1D ndarray): data to plot.
+            data_type(str, optional): type of the data: 'solution' or 'detector_geometry'. Default: solution.
+            filled(bool_optional, optional): if true, bars are filled. Color depends on the bar height. Default: True.
+            fill_scheme(str, optional): matplotlib fill scheme. Valid only if filled is True. Default: 'viridis'.
+            edge_color(str, optional): color of the bar edges. See matplotlib colors for the avaiable options.
+                Default: 'black'.
+            grid(bool, optional): If true, grid is displayed. Default:False.
+            equal_norm(bool, optional): If true, all detectors will have same norm.
+                Valid only if data_type = detector_geometry. Default: False.
+            *args,**kwargs: additional arguments to pass to matplotlib bar plot.
+
+        Returns:
+            matplotlib plot, matplotlib axis
         """
         if data_type == 'solution':
             y_label = r"Density, {}{}".format(self.units, '$^{-1}$')
             plot, ax = plot1d.bar1d(data, self, 'Density', y_label, filled, fill_scheme,
-                                    edgecolor, grid, *args, **kwargs)
+                                    edge_color, grid, *args, **kwargs)
         elif data_type == 'detector_geometry':
             title = "Detector 1/{}".format(data.shape[0])
             y_label = "Intersection length, {}".format(self.units)
             plot, ax, _ = plot1d.detector_bar1d(data, self, title, y_label, filled,
-                                                fill_scheme, edgecolor, grid, equal_norm, *args, **kwargs)
+                                                fill_scheme, edge_color, grid, equal_norm, *args, **kwargs)
         else:
             raise AttributeError("data type {} is unknown".format(data_type))
         plt.show()
@@ -168,8 +221,22 @@ class Axis1d(abstract_axes.Abstract1dAxis):
 
     def plot2d(self, data, axis2, data_type='solution',
                fill_scheme='viridis', grid=False, equal_norm=False, *args, **kwargs):
-        """
+        """Create 2D plot of the solution or detector geometry.
 
+        matplotlib pcolormesh is used. Detector data is plotted on the interactive graph.
+
+        Args:
+            data(1D ndarray): data to plot.
+            axis2(tomomak axis): second axis. Only cartesian.Axis1d is supported.
+            data_type(str, optional): type of the data: 'solution' or 'detector_geometry'. Default: solution.
+            fill_scheme(str, optional): matplotlib fill scheme. Valid only if filled is True. Default: 'viridis'.
+            grid(bool, optional): If true, grid is displayed. Default:False.
+            equal_norm(bool, optional): If true, all detectors will have same norm.
+                Valid only if data_type = detector_geometry. Default: False.
+            *args,**kwargs: additional arguments to pass to matplotlib pcolormesh.
+
+        Returns:
+            matplotlib plot, matplotlib axis
         """
         if type(axis2) is not Axis1d:
             raise NotImplementedError("2D plots with such combination of axes are not supported.")
@@ -185,3 +252,7 @@ class Axis1d(abstract_axes.Abstract1dAxis):
             raise AttributeError('data type {} is unknown'.format(data_type))
         plt.show()
         return plot, ax
+
+    def plot3d(self, data, axis2, axis3, data_type='solution', *args, **kwargs):
+        raise Exception("Not implemented")
+        return 0

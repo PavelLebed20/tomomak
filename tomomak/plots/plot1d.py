@@ -107,6 +107,7 @@ def detector_bar1d(data, axis, title='', ylabel='', filled=True,
                     p.set_color(c)
                 p.set_edgecolor(edgecolor)
             super().redraw()
+            self.ax.autoscale_view()
 
     norm = None
     if equal_norm:

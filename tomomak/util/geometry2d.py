@@ -38,7 +38,7 @@ def intersection_2d(mesh, points, index=(0, 1), calc_area=True):
     if mesh.axes[index[0]].dimension == 2:
         i1 = index[0]
         try:
-            cells = mesh.axes[i1].cell_edges()
+            cells = mesh.axes[i1].cell_edges1d()
             shape = (mesh.axes[i1].size,)
             res = np.zeros(shape)
             for i, row in enumerate(res):
@@ -52,7 +52,7 @@ def intersection_2d(mesh, points, index=(0, 1), calc_area=True):
                         res[i] = 1
             return res
         except (TypeError, AttributeError) as e:
-            raise type(e)(e.message + "Custom axis should implement cell_edges method. "
+            raise type(e)(e.message + "Custom axis should implement cell_edges1d method. "
                                       "This method returns 1d list of ordered sequence of point tuples."
                                       " See docstring for more information.")
     # If axes are 1D
@@ -102,7 +102,7 @@ def cell_areas(mesh, index):
         i1 = index[0]
         shape = (mesh.axes[i1].size,)
         ds = np.zeros(shape)
-        cells = mesh.axes[i1].cell_edges()
+        cells = mesh.axes[i1].cell_edges1d()
         for i, row in enumerate(ds):
             cell = shapely.geometry.Polygon(cells[i])
             ds[i] = cell.area

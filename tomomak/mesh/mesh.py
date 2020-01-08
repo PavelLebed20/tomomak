@@ -1,6 +1,6 @@
 import numpy as np
 from tomomak.util import array_routines
-
+import itertools
 
 class Mesh:
     """Mesh, containing all coordinate axes.
@@ -70,6 +70,7 @@ class Mesh:
         where dv is length/surface/volume of a cell.
 
         Args:
+
             data (numpy.array): Array to integrate.
             index (int/list of int): Index or list of indexes of ndarray dimension to integrate over.
             integrate_type ('integrate', 'sum'): Type of integration.
@@ -131,8 +132,8 @@ class Mesh:
         if isinstance(index, int):
             index = [index]
         new_data = self._prepare_data(data, index, data_type)
-        plot, ax = self._axes[index[0]].plot1d(new_data, data_type, *args, **kwargs)
-        return plot, ax
+        plot = self._axes[index[0]].plot1d(new_data, data_type, *args, **kwargs)
+        return plot
 
     def plot2d(self, data, index=0, data_type='solution', *args, **kwargs):
         if isinstance(index, int):
@@ -141,48 +142,56 @@ class Mesh:
         if len(index) == 1:
             try:
                 new_data = self._prepare_data(data, index[0], data_type)
-                plot, ax = self._axes[index[0]].plot2d(new_data, *args, **kwargs)
-                return plot, ax
+                plot = self._axes[index[0]].plot2d(new_data, *args, **kwargs)
+                return plot
             except (AttributeError, TypeError):
                 index.append(index[0] + 1)
         # try to draw using 2 axes
         new_data = self._prepare_data(data, index, data_type)
         try:
-            plot, ax = self._axes[index[0]].plot2d(new_data, self._axes[index[1]], data_type, *args, **kwargs)
+            plot = self._axes[index[0]].plot2d(new_data, self._axes[index[1]], data_type, *args, **kwargs)
         except (AttributeError, NotImplementedError):
             new_data = new_data.transpose()
-            plot, ax = self._axes[index[1]].plot2d(new_data, self._axes[index[0]], data_type, *args, **kwargs)
-        return plot, ax
+            plot = self._axes[index[1]].plot2d(new_data, self._axes[index[0]], data_type, *args, **kwargs)
+        return plot
 
-    def plot3d(self, data, index=0, *args, **kwargs):
+    def plot3d(self, data, index=0, data_type='solution', *args, **kwargs):
         if isinstance(index, int):
             index = [index]
         # try to draw using 1 axis
-        if isinstance(index, int):
+        if len(index) == 1:
             try:
-                self._axes[index].plot3d(data, *args, **kwargs)
-                return
-            except AttributeError:
-                index = [index, index+1]
-        elif len(index) == 1:
-            try:
-                self._axes[index[0]].plot3d(data, *args, **kwargs)
-                return
-            except AttributeError:
+                new_data = self._prepare_data(data, index[0], data_type)
+                plot = self._axes[index[0]].plot3d(new_data, *args, **kwargs)
+                return plot
+            except (AttributeError, TypeError):
                 index.append(index[0] + 1)
         # try to draw using 2 axes
+        new_data = self._prepare_data(data, index, data_type)
         try:
-            axis2d = self._axes[index[0]].to2d(self._axes[index[1]])
-        except AttributeError:
-            axis2d = self._axes[index[0]].to3d(self._axes[index[1]])
-        try:
-            axis2d.plot3d(data, *args, **kwargs)
-            return
+            plot = self._axes[index[0]].plot3d(new_data, self._axes[index[1]], data_type, *args, **kwargs)
+            return plot
         except (AttributeError, NotImplementedError):
-            index.append(index[1] + 1)
+            try:
+                new_data = new_data.transpose()
+                plot = self._axes[index[1]].plot3d(new_data, self._axes[index[0]], data_type, *args, **kwargs)
+                return plot
+            except (AttributeError, TypeError):
+                index.append(index[1] + 1)
         # try to draw using 3 axes
-        axis3d = axis2d.to3d(self._axes[index[2]])
-        axis3d.plot3d(data, *args, **kwargs)
+        new_data = self._prepare_data(data, index, data_type)
+        ind_lst = list(itertools.permutations((0, 1, 2), 3))
+        for p in ind_lst:
+            try:
+                new_ax = [self._axes[i] for i in p]
+                dat = np.array(new_data)
+                for i in range(3):
+                    np.moveaxis(dat, p[i], i)
+                plot = new_ax[index[0]].plot3d(dat, new_ax[index[1]], new_ax[index[2]], data_type, *args, **kwargs)
+                return plot
+            except(AttributeError, TypeError):
+                pass
+        raise TypeError("plot3d is not implemented for such axes combination")
 
     def draw_mesh(self):
         pass

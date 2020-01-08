@@ -7,15 +7,70 @@ from tomomak.transform import rescale
 from tomomak.transform import pipeline
 from tomomak.detectors import detectors2d, signal
 from tomomak import iterators
-from tomomak.iterators import ml, algebraic, gpu
+from tomomak.iterators import ml, algebraic#, gpu
 from tomomak.iterators import statistics
 import tomomak.constraints.basic
+from mpl_toolkits.mplot3d import Axes3D
+import itertools
 
 
+axes = [Axis1d(name="X", units="cm", size=15, upper_limit=10),
+        Axis1d(name="Y", units="cm", size=15, upper_limit=10)]
+mesh = Mesh(axes)
+# Now we can create Model.
+# Model is one of the basic tomomak structures which stores information about geometry, solution and detectors.
+# At present we only have information about the geometry.
+mod = Model(mesh=mesh)
+# Now let's create synthetic 2D object to study.
+# We will consider triangle.
+real_solution = polygon(mesh, [(1, 1), (4, 8), (7, 2)])
+# Model.solution is the solution we are looking for.
+# It will be obtained at the end of this example.
+# However, if you already know supposed solution (for example you get it with simulation),
+# you can use it as first approximation by setting Model.solution = *supposed solution*.
+# Recently we've generated test object, which is, of course, real solution.
+# A trick to visualize this object is to temporarily use it as model solution.
+mod.solution = real_solution
 
+# After we've visualized our test object, it's time to set model solution to None and try to find this solution fairly.
+mod.solution = None
+
+# Next step is to provide information about the detectors.
+# Let's create 15 fans with 22 detectors around the investigated object.
+# Each line will have 1 cm width and 0.2 Rad divergence.
+# Note that number of detectors = 330 < solution cells = 600, so it's impossible to get perfect solution.
+det = detectors2d.fan_detector_array(mesh=mesh,
+                                     focus_point=(5, 5),
+                                     radius=11,
+                                     fan_num=1,
+                                     line_num=22,
+                                     width=1,
+                                     divergence=0.2)
+# Now we can calculate signal of each detector.
+# Of course in the real experiment you measure detector signals so you don't need this function.
+det_signal = signal.get_signal(real_solution, det)
+mod.detector_signal = det_signal
+mod.detector_geometry = det
+# Let's take a look at the detectors geometry:
+mod.plot2d(data_type='detector_geometry', equal_norm=True)
+mod.plot1d(data_type='detector_geometry',equal_norm=True )
 #axes = [Axis1d(name="x", units="cm", size=20), Axis1d(name="Y", units="cm", size=30), Axis1d(name="Y", units="cm", size=130)]
-axes = [Axis1d(name="x", units="cm", size=20), Axis1d(name="Y", units="cm", size=30)]
+axes = [Axis1d(name="x", units="cm", size=5), Axis1d(name="Y", units="cm", size=10), Axis1d(name="Z", units="cm", size=20)]
 #axes = [Axis1d(name="x", units="cm", size=21), Axis1d(name="Y", units="cm", coordinates=np.array([1, 3, 5, 7, 9, 13]),  lower_limit=0), Axis1d(name="z", units="cm", size=3)]
+
+
+# inters = axes[0].cell_edges3d(axes[1], axes[2])
+# rect = inters[0][0][0]
+# fig = plt.figure()
+# ax = fig.add_subplot(111, projection='3d')
+#
+#
+# for p in rect:
+#     xs = p[0]
+#     ys = p[1]
+#     zs = p[2]
+#     ax.scatter(xs, ys, zs)
+# plt.show()
 
 mesh = Mesh(axes)
 
@@ -40,6 +95,7 @@ det_signal = signal.get_signal(solution, det)
 #solution= sparse.COO(solution)
 
 mod = Model(mesh=mesh,  detector_signal = det_signal, detector_geometry=det, solution = solution)
+mod.plot3d()
 #mod.plot2d(index=(0,1))
 mod.solution = None
 solver = Solver()

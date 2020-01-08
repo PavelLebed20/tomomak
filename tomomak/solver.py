@@ -67,7 +67,7 @@ class Solver:
                                  old_solution=old_solution, model=model)
                     if val < self.stop_values[k]:
                         print('\r \r', end='')
-                        print("Early stopping: " + s.__name__ + " < " + str(self.stop_values[k]))
+                        print("Early stopping at step {}: {} < {}.".format(i, s, self.stop_values[k]))
                         stop = True
                 if stop:
                     break

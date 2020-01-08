@@ -27,8 +27,8 @@ def colormesh2d(data, axis1, axis2, title='', fill_scheme='viridis', grid=False,
          fig(matplotlib.figure): The figure module.
          cb(matplotlib.pyplot.colorbar): colorbar on the right of the axis.
      """
-    x = axis1.cell_edges
-    y = axis2.cell_edges
+    x = axis1.cell_edges1d
+    y = axis2.cell_edges1d
     z = data.transpose()
     cmap = plt.get_cmap(fill_scheme)
     fig, ax = plt.subplots()
@@ -71,8 +71,8 @@ def detector_colormesh2d(data, axis1, axis2, title='', fill_scheme='viridis',
         Objects need to exist in order to work.
          """
     class ColormeshSlice(interactive.DetectorPlotSlicer):
-        def __init__(self, plot_data, axis, figure, color_bar, normalization):
-            super().__init__(plot_data, axis)
+        def __init__(self, data, axis, figure, color_bar, normalization):
+            super().__init__(data, axis)
             self.fig = figure
             self.cb = color_bar
             self.norm = normalization
