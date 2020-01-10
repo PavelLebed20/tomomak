@@ -1,5 +1,8 @@
+import numpy as np
+
 from tomomak import model
 from tomomak.solver import *
+from tomomak.solver.solver import Solver
 from tomomak.test_objects import objects2d
 from tomomak.mesh import mesh
 from tomomak.mesh import cartesian

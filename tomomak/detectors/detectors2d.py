@@ -1,10 +1,36 @@
 """Generators for basic detectors arrays in 2D geometry
 """
+from math import acos, sin, cos
+
 import shapely.geometry
 import shapely.affinity
+from scipy.stats import norm
+
 import tomomak.util.geometry2d
 import numpy as np
 
+class Detector2d:
+    def __init__(self):
+        ang = acos((708 ** 2 + 720 ** 2 - 31 ** 2) / (2 * 708 * 720))
+        spd_start = np.array([0, -0.708])
+        spd_end = np.array([0.72 * sin(ang), 0.72 * -cos(ang)])
+        spd_vect = (spd_end - spd_start) / norm(spd_end - spd_start)
+        min_step = (2.3375 - 0.88) * 1e-03
+        max_step = (3.81 - 2.3375 + 0.88) * 1e-03
+        pp = spd_start + spd_vect * ((min_step + max_step) * 8 + 0.52 * 1e-03) / 2
+        pp = pp.real
+
+        aperture_xy_offset = 0.0395
+        self.aperture_xy = np.array([pp[0] - spd_vect[1] * aperture_xy_offset, pp[1] + spd_vect[0] * aperture_xy_offset])
+        spd_z_start = (27.52 - 0.49) / 2 * 1e-03
+        spd_z_step = -1.72 * 1e-03
+        self.spd_xy = spd_start + spd_vect * (max_step / 2 + 0.26 * 1e-03)
+
+        step = [[min_step, -min_step], [max_step, -max_step]]
+        self.points_z = np.array([spd_z_start + i * spd_z_step for i in range(16)])
+        self.points_xy = np.full((16, 2), spd_start + step[0])
+        for j in range(1, 16):
+            self.points_xy[j] = self.points_xy[j - 1] + spd_vect * (min_step if j % 2 == 1 else max_step)
 
 def line2d(mesh, p1, p2, width, divergence=0, index=(0, 1), response=1, radius_dependence=True,
            broadcast=True, calc_area=True):
@@ -62,8 +88,8 @@ def fan_detector(mesh, p1, p2, width,  number, index=(0, 1), angle=np.pi/2, *arg
         ndarray: numpy array, representing fan of detectors on a given mesh.
     """
     if angle < 0 or angle >= np.pi:
-        raise ValueError("angle value is {}. It should be >= 0 and < pi.".format(angle))
-    # finding first sightline of the detector
+        raise ValueError("angle value is {}. < pi.".format(angle))
+    # finding first sightline of the detector It should be >= 0 and
     p1 = np.array(p1)
     p2 = np.array(p2)
     if isinstance(index, int):

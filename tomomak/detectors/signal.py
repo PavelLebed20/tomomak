@@ -76,4 +76,4 @@ def resample(signal, rate, n_slices=1):
         x_new = np.arange((det_num-1) * (rate - 1) + det_num) / rate
         x_new = x_new / x_new[-1] * (det_num-1)
         y_new = np.append(y_new, f(x_new))
-    return y_new
+    return y_newz
