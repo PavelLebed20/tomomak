@@ -1,5 +1,7 @@
 """Routines to work with geometry
 """
+from math import sqrt
+
 import numpy as np
 import shapely.geometry
 
@@ -153,3 +155,45 @@ def cell_distances(mesh, index, p):
                 p2 = shapely.geometry.Point(mesh.axes[i1].coordinates[i], mesh.axes[i2].coordinates[j])
                 r[i, j] = p1.distance(p2)
     return r
+
+
+def create_line(p, q):
+    """Function for creating an equation of the line by two points
+
+    Args:
+        p(ndarray): first point
+        q(ndarray): second point
+
+    Returns:
+        ndarray: three coefficients of the line `ax + by = c`, where c - distance from line to (0, 0)
+    """
+
+    a = p[1] - q[1]
+    b = q[0] - p[0]
+    c = p[0] * q[1] - q[0] * p[1]
+    mu = sqrt(a ** 2 + b ** 2)
+    a = a / mu
+    b = b / mu
+    c = c / mu
+
+    if c > 0:
+        a = -a
+        b = -b
+    c = abs(c)
+
+    return np.array([a, b, c])
+
+
+def get_line_value(x, line):
+    """Function for getting `y` value from equation `ax + by = c`
+
+    Args:
+        x(real): point x
+        line(ndarray): line coefficients [a, b, c]
+
+    Returns:
+         real: value of `y` from equation `ax + by = c`
+    """
+
+    a, b, c = line
+    return (c - a * x) / b

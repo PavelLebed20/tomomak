@@ -15,4 +15,5 @@ env/
 .coverage.*
 coverage.xml
 .idea
+*.pyc
 
