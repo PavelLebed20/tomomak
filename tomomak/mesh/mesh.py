@@ -149,7 +149,10 @@ class Mesh:
         # try to draw using 2 axes
         new_data = self._prepare_data(data, index, data_type)
         try:
-            plot = self._axes[index[0]].plot2d(new_data, self._axes[index[1]], data_type, *args, **kwargs)
+            if self._axes[index[0]].dimension == 2:
+                plot = self._axes[index[0]].plot2d(new_data, data_type, *args, **kwargs)
+            else:
+                plot = self._axes[index[0]].plot2d(new_data, self._axes[index[1]], data_type, *args, **kwargs)
         except (AttributeError, NotImplementedError):
             new_data = new_data.transpose()
             plot = self._axes[index[1]].plot2d(new_data, self._axes[index[0]], data_type, *args, **kwargs)
