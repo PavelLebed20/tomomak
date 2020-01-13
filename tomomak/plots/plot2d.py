@@ -1,6 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
+
 from matplotlib import colors
+from matplotlib.patches import Polygon
+from matplotlib.collections import PatchCollection
+
 from . import interactive
 
 
@@ -91,5 +95,98 @@ def detector_colormesh2d(data, axis1, axis2, title='', fill_scheme='viridis',
         norm = [min(np.min(data), 0), np.max(data)]
     plot, ax, fig, cb = colormesh2d(data[0], axis1, axis2, title,  fill_scheme, grid, norm, *args, **kwargs)
     callback = ColormeshSlice(data, ax, fig, cb, norm)
+    b_next, b_prev = interactive.crete_prev_next_buttons(callback.next, callback.prev)
+    return plot, ax, (b_next, b_prev)
+
+
+def spiderweb_colormesh2d(data, axis, title='', fill_scheme='viridis', grid=False, norm=None, *args,  **kwargs):
+    """Prepare bar plot for 2D data visualization.
+
+     matplotlib.pyplot.pcolormesh  is used.
+
+     Args:
+        data(ndarray): 2D array of data.
+        axis(axis): corresponding tomomak axis
+        title(str, optional): Plot title. default: ''.
+        fill_scheme(pyplot colormap, optional): pyplot colormap to be used in the plot. default: 'viridis'.
+        grid(bool, optional): if True, grid is shown. default: False.
+        *args, **kwargs: arguments will be passed to matplotlib.pyplot.pcolormesh
+
+     Returns:
+         plot: matplotlib pcolormesh .
+         ax(axes.Axes ): axes.Axes object or array of Axes objects.
+             See matplotlib Axes class
+         fig(matplotlib.figure): The figure module.
+         cb(matplotlib.pyplot.colorbar): colorbar on the right of the axis.
+     """
+
+    x = axis.cell_edges2d()
+    cmap = plt.get_cmap(fill_scheme)
+    fig, ax = plt.subplots()
+
+    colors = []
+    for i in range(len(x)):
+        colors.append(data[i])
+
+    patches = []
+    for i in range(len(x)):
+        polygon = Polygon(x[i])
+        patches.append(polygon)
+
+    p = PatchCollection(patches, cmap=cmap, alpha=1.0)
+    p.set_array(np.array(colors))
+
+    plot = ax.add_collection(p)
+
+    cb = fig.colorbar(plot, ax=ax)
+    ax.set_title(title)
+
+    xlabel = "{}, {}".format(axis.name, axis.units)
+    ylabel = "{}, {}".format(axis.name, axis.units)
+    ax.set(xlabel=xlabel, ylabel=ylabel)
+
+    if grid:
+        ax.grid()
+    return plot, ax, fig, cb
+
+
+def detector_spiderweb_colormesh2d(data, axis, title='', fill_scheme='viridis', grid=False, *args, **kwargs):
+    """Prepare bar plot for 2D detector data visualization with interactive elements.
+
+    matplotlib.pyplot.pcolormesh  is used. Interactive elements are Next and Prev buttons to change detectors.
+
+     Args:
+        data(ndarray): 2D array of data.
+        axis(axis): corresponding tomomak axis.
+        title(str, optional): Plot title. default: ''.
+        fill_scheme(pyplot colormap, optional): pyplot colormap to be used in the plot. default: 'viridis'.
+        grid(bool, optional): if True, grid is shown. default: False.
+        *args, **kwargs: arguments will be passed to matplotlib.pyplot.pcolormesh
+
+    Returns:
+    plot: matplotlib bar plot.
+    ax(matplotlib.axes.Axes): axes.Axes object or array of Axes objects.
+        See matplotlib Axes class
+    (b_next, b_prev) tuple(matplotlib.widgets.Button): Tuple, containing Next and Prev buttons.
+        Objects need to exist in order to work.
+         """
+    class ColormeshSlice(interactive.DetectorPlotSlicer):
+        def __init__(self, data, axis, figure, color_bar, normalization):
+            super().__init__(data, axis)
+            self.fig = figure
+            self.cb = color_bar
+            self.norm = normalization
+
+        def redraw(self):
+            y_data = np.transpose(self.data[self.ind])
+            plot.set_array(y_data.flatten())
+            if self.norm is None:
+                normalization = colors.Normalize(np.min(y_data), np.max(y_data))
+                self.cb.mappable.set_norm(normalization)
+                self.cb.draw_all()
+            super().redraw()
+
+    plot, ax, fig, cb = spiderweb_colormesh2d(data[0], axis, title, fill_scheme, grid, *args, **kwargs)
+    callback = ColormeshSlice(data, ax, fig, cb, None)
     b_next, b_prev = interactive.crete_prev_next_buttons(callback.next, callback.prev)
     return plot, ax, (b_next, b_prev)

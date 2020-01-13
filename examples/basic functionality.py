@@ -6,12 +6,16 @@ from tomomak.solver.solver import Solver
 from tomomak.test_objects import objects2d
 from tomomak.mesh import mesh
 from tomomak.mesh import cartesian
+from tomomak.mesh import spiderweb_axes
 from tomomak.transform import rescale
 from tomomak.transform import pipeline
 from tomomak.detectors import detectors2d, signal
 from tomomak.iterators import ml, algebraic
 from tomomak.iterators import statistics
 import tomomak.constraints.basic
+import math
+
+from tomomak.util.gfileextractor import gfile_extract
 
 
 # This is an example of a basic framework functionality.
@@ -21,16 +25,21 @@ import tomomak.constraints.basic
 # The first step is to create coordinate system. We will consider 2D cartesian coordinates.
 # Let's create coordinate mesh. First axis will consist of 20 segments. Second - of 30 segments.
 # This means that solution will be described by the 20x30 array.
-axes = [cartesian.Axis1d(name="X", units="cm", size=20, upper_limit=10),
-        cartesian.Axis1d(name="Y", units="cm", size=30, upper_limit=10)]
-mesh = mesh.Mesh(axes)
+# axes = [cartesian.Axis1d(name="X", units="cm", size=20, upper_limit=10),
+#         cartesian.Axis1d(name="Y", units="cm", size=30, upper_limit=10)]
+
+border, center = gfile_extract('data/g035685.00150')
+
+spider_axis = spiderweb_axes.SpiderWeb2dAxis(border=border, center=center)
+
+mesh = mesh.Mesh((spider_axis,))
 # Now we can create Model.
 # Model is one of the basic tomomak structures which stores information about geometry, solution and detectors.
 # At present we only have information about the geometry.
 mod = model.Model(mesh=mesh)
 # Now let's create synthetic 2D object to study.
 # We will consider triangle.
-real_solution = objects2d.polygon(mesh, [(1, 1), (4, 8), (7, 2)])
+real_solution = objects2d.polygon(mesh, [(0.2, -0.2), (0.5, -0.1), (0.30, 0.30)])
 # Model.solution is the solution we are looking for.
 # It will be obtained at the end of this example.
 # However, if you already know supposed solution (for example you get it with simulation),
