@@ -6,34 +6,15 @@ import shapely.geometry
 import shapely.affinity
 from scipy.stats import norm
 
-import tomomak.util.geometry2d
+import tomomak.util.geometry.AbstractGeometry
+from tomomak.util.geometry.geometry2d import Geometry2d
 import numpy as np
+from tomomak.util.array_routines import broadcast_object
 
-class Detector2d:
-    def __init__(self):
-        ang = acos((708 ** 2 + 720 ** 2 - 31 ** 2) / (2 * 708 * 720))
-        spd_start = np.array([0, -0.708])
-        spd_end = np.array([0.72 * sin(ang), 0.72 * -cos(ang)])
-        spd_vect = (spd_end - spd_start) / norm(spd_end - spd_start)
-        min_step = (2.3375 - 0.88) * 1e-03
-        max_step = (3.81 - 2.3375 + 0.88) * 1e-03
-        pp = spd_start + spd_vect * ((min_step + max_step) * 8 + 0.52 * 1e-03) / 2
-        pp = pp.real
 
-        aperture_xy_offset = 0.0395
-        self.aperture_xy = np.array([pp[0] - spd_vect[1] * aperture_xy_offset, pp[1] + spd_vect[0] * aperture_xy_offset])
-        spd_z_start = (27.52 - 0.49) / 2 * 1e-03
-        spd_z_step = -1.72 * 1e-03
-        self.spd_xy = spd_start + spd_vect * (max_step / 2 + 0.26 * 1e-03)
+def line_intersect(mesh, p1, p2, width, divergence=0, index=(0, 1), response=1, radius_dependence=True,
+                   broadcast=True, calc_area=True, geometry=Geometry2d):
 
-        step = [[min_step, -min_step], [max_step, -max_step]]
-        self.points_z = np.array([spd_z_start + i * spd_z_step for i in range(16)])
-        self.points_xy = np.full((16, 2), spd_start + step[0])
-        for j in range(1, 16):
-            self.points_xy[j] = self.points_xy[j - 1] + spd_vect * (min_step if j % 2 == 1 else max_step)
-
-def line2d(mesh, p1, p2, width, divergence=0, index=(0, 1), response=1, radius_dependence=True,
-           broadcast=True, calc_area=True):
     """Generate intersection with one detector line with given parameters.
 
     Source is isotropic.
@@ -41,11 +22,11 @@ def line2d(mesh, p1, p2, width, divergence=0, index=(0, 1), response=1, radius_d
 
     Args:
         mesh(tomomak.main_structures.Mesh): mesh to work with.
-        p1(tuple of 2 floats): Detector origin (x, y).
-        p2(tuple of 2 floats): Second point, characterizing central axis of detector line.
+        p1(tuple of N floats): Detector origin (x, y, z ...).
+        p2(tuple of N floats): Second point, characterizing central axis of detector line.
         width: width of line.
         divergence: line of sight divergence. 0 means line is collimated. Default: 0.
-        index(tuple of two ints, optional): axes to build object at. Default: (0,1).
+        index(tuple of two ints, optional): axes to build object at. Default: (0,1,2...).
         response(float): Detector response = amplification * detector area.
             E.g. detector signal at 1m from source, emitting 4*pi particles at given time interval.
         radius_dependence: if True, signal is divided by 4 *pi *r^2
@@ -53,16 +34,17 @@ def line2d(mesh, p1, p2, width, divergence=0, index=(0, 1), response=1, radius_d
             If False, 2d array is returned, even if Mesh is not 2D. Default: True.
         calc_area(bool): If True, area of intersection with each cell is calculated, if False,
             only fact of intersecting with mesh cell is taken into account. Default: True.
+        geometry: geometry for making N dimestion intersection
 
     Returns:
          ndarray: numpy array, representing one detector on a given mesh.
     """
-    points = _line_to_polygon(p1, p2, width, divergence)
+    points = geometry._line_to_polygon(p1, p2, width, divergence)
     if isinstance(index, int):
         index = [index]
-    res = tomomak.util.geometry2d.intersection_2d(mesh, points, index, calc_area)
+    res = geometry.intersection(mesh, points, index, calc_area)
     if radius_dependence:
-        r = tomomak.util.geometry2d.cell_distances(mesh, index, p1)
+        r = geometry.cell_distances(mesh, index, p1)
         r = 4 * np.pi * np.square(r)
         res /= r
     res *= response
@@ -106,7 +88,7 @@ def fan_detector(mesh, p1, p2, width,  number, index=(0, 1), angle=np.pi/2, *arg
     res = np.zeros(shape)
     for i in range(number):
         p1, p2 = line.coords
-        addition = np.array([line2d(mesh, p1, p2, width, index=index,  *args, **kwargs)])
+        addition = np.array([line(mesh, p1, p2, width, index=index,  *args, **kwargs)])
         res = np.append(res, addition, axis=0)
         line = shapely.affinity.rotate(line, rot_angle, origin=p1, use_radians=True)
     return res
@@ -178,45 +160,7 @@ def parallel_detector(mesh, p1, p2, width, number, shift, index=(0, 1), *args, *
     res = np.zeros(shape)
     for i in range(number):
         p1, p2 = line.coords
-        addition = np.array([line2d(mesh, p1, p2, width, index=index,  *args, **kwargs)])
+        addition = np.array([line(mesh, p1, p2, width, index=index,  *args, **kwargs)])
         res = np.append(res, addition, axis=0)
         line = line.parallel_offset(shift, 'left')
     return res
-
-
-def _line_to_polygon(p1, p2, width, divergence=0):
-    """Generate detector geometry for one Line of Sight.
-
-    line of sight can be collimated or diverging (cone-like).
-
-    Args:
-        p1, p2(tuple of 2 points):
-        width(float): line width.
-        divergence(float, optional): Angle between two LOS borders in Rad [0, pi). 0 means that line is collimated.
-            default: 0.
-
-    Returns:
-        tuple of 4 points: List of 4 Shapely points, defining LOS.
-
-    Raises:
-        ValueError if divergence is < 0 or >= pi.
-    """
-    if divergence < 0 or divergence >= np.pi:
-        raise ValueError("Divergence value is {}. It should be >= 0 and < pi.".format(divergence))
-    # increase line length in case of line rotation
-    p1 = np.array(p1)
-    p2 = np.array(p2)
-    r = p2 - p1
-    r = r / np.cos(divergence)
-    p2 = p1 + r
-    # take into account width and divergence
-    line = shapely.geometry.LineString([p1, p2])
-    ll = line.parallel_offset(width/2, 'left')
-    p_top = ll.coords[0]
-    ll = shapely.affinity.rotate(ll, divergence/2, origin=p_top, use_radians=True)
-    lr = line.parallel_offset(width/2, 'right')
-    p_top = lr.coords[1]
-    lr = shapely.affinity.rotate(lr, -divergence/2, origin=p_top, use_radians=True)
-    p1, p2 = ll.coords
-    p3, p4 = lr.coords
-    return p1, p2, p3, p4

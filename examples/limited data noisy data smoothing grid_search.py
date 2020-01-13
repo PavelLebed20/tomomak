@@ -4,7 +4,7 @@ from tomomak.test_objects import objects2d
 from tomomak.mesh import mesh
 from tomomak.mesh.cartesian import Axis1d
 import numpy as np
-from tomomak.detectors import detectors2d, signal
+from tomomak.detectors import detectors, signal
 from tomomak.iterators import algebraic
 from tomomak.iterators import statistics
 import tomomak.constraints.basic
@@ -32,13 +32,13 @@ mod.solution = None
 
 # We will start with the ideal case: no signal noise and number of detectors > number of cells.
 # Let's create 30 fan detectors around the target. 40 detectors in each fan.
-det = detectors2d.fan_detector_array(mesh=mesh,
-                                     focus_point=(5, 5),
-                                     radius=11,
-                                     fan_num=30,
-                                     line_num=40,
-                                     width=0.5,
-                                     divergence=0.05)
+det = detectors.fan_detector_array(mesh=mesh,
+                                   focus_point=(5, 5),
+                                   radius=11,
+                                   fan_num=30,
+                                   line_num=40,
+                                   width=0.5,
+                                   divergence=0.05)
 mod.detector_geometry = det
 
 # Next step is to simulate each detector signal.
@@ -79,13 +79,13 @@ solver.plot_statistics()
 # you will not meet such conditions.
 # Let's consider our first case: limited data. In this example we will use only 10 fans with 30 detectors,
 # while mesh is still consist of 30x30 cells.
-limited_det = detectors2d.fan_detector_array(mesh=mesh,
-                                             focus_point=(5, 5),
-                                             radius=11,
-                                             fan_num=10,
-                                             line_num=30,
-                                             width=0.5,
-                                             divergence=0.1)
+limited_det = detectors.fan_detector_array(mesh=mesh,
+                                           focus_point=(5, 5),
+                                           radius=11,
+                                           fan_num=10,
+                                           line_num=30,
+                                           width=0.5,
+                                           divergence=0.1)
 
 mod.detector_signal = None
 mod.detector_geometry = limited_det

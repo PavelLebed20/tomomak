@@ -9,7 +9,7 @@ from tomomak.mesh import mesh
 from tomomak.mesh import cartesian
 from tomomak.transform import rescale
 from tomomak.transform import pipeline
-from tomomak.detectors import detectors2d, signal
+from tomomak.detectors import detectors, signal
 from tomomak.iterators import ml, algebraic
 from tomomak.iterators import statistics
 import tomomak.constraints.basic
@@ -49,13 +49,13 @@ mod.solution = None
 # Let's create 15 fans with 22 detectors around the investigated object.
 # Each line will have 1 cm width and 0.2 Rad divergence.
 # Note that number of detectors = 330 < solution cells = 600, so it's impossible to get perfect solution.
-det = detectors2d.fan_detector_array(mesh=mesh,
-                                     focus_point=(5, 5),
-                                     radius=11,
-                                     fan_num=15,
-                                     line_num=22,
-                                     width=1,
-                                     divergence=0.2)
+det = detectors.fan_detector_array(mesh=mesh,
+                                   focus_point=(5, 5),
+                                   radius=11,
+                                   fan_num=15,
+                                   line_num=22,
+                                   width=1,
+                                   divergence=0.2)
 # Now we can calculate signal of each detector.
 # Of course in the real experiment you measure detector signals so you don't need this function.
 det_signal = signal.get_signal(real_solution, det)

@@ -6,7 +6,7 @@ import numpy as np
 import shapely.geometry
 import shapely.affinity
 import tomomak.util.array_routines
-import tomomak.util.geometry2d
+import tomomak.util.geometry.geometry2d
 
 
 def polygon(mesh, points=((0, 0), (5, 5), (10, 0)), index=(0, 1), density=1, broadcast=True):
@@ -39,8 +39,8 @@ def polygon(mesh, points=((0, 0), (5, 5), (10, 0)), index=(0, 1), density=1, bro
     """
     if isinstance(index, int):
         index = [index]
-    res = tomomak.util.geometry2d.intersection_2d(mesh, points, index)
-    ds = tomomak.util.geometry2d.cell_areas(mesh, index)
+    res = tomomak.util.geometry.geometry2d.intersection_2d(mesh, points, index)
+    ds = tomomak.util.geometry.geometry2d.cell_areas(mesh, index)
     res /= ds
     res *= density
     if broadcast:
