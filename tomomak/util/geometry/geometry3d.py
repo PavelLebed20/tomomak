@@ -1,3 +1,5 @@
+from math import acos
+
 import numpy as np
 import shapely.geometry
 from numpy.linalg import norm
@@ -55,6 +57,11 @@ class Geometry3d(AbstractGeometry):
         points[2] = p2 + perp
         points[3] = p2 - perp
 
+        # for test
+        points = np.zeros((2, 3))
+        points[0] = p1
+        points[1] = p2
+
         return points
 
     @staticmethod
@@ -68,7 +75,7 @@ class Geometry3d(AbstractGeometry):
         Returns:
             ndarray: 2D or 1D ndarray with distances.
             """
-        p1 = shapely.geometry.Point(p)
+        p1 = p
         # If axis is 2D
         if len(index) == 2:
             # check one is 2 dimension, other is one
@@ -84,9 +91,8 @@ class Geometry3d(AbstractGeometry):
                 for j, _ in enumerate(row):
                     t1 = mesh.axes[i1].coordinates[i]
                     t2 = mesh.axes[i2].coordinates[j]
-
-                    p2 = shapely.geometry.Point(t1[0], t1[1], t2[0])
-                    r[i, j] = p1.distance(p2)
+                    p2 = np.array([t1[0], t1[1], t2])
+                    r[i, j] = np.linalg.norm(p2-p1)
         # If axes are 1D
         elif len(index) == 3:
             i1 = index[0]
@@ -99,7 +105,8 @@ class Geometry3d(AbstractGeometry):
             for k, plane in enumerate(r):
                 for i, row in enumerate(plane):
                     for j, _ in enumerate(row):
-                        p2 = shapely.geometry.Point(mesh.axes[i1].coordinates[k], mesh.axes[i2].coordinates[i], mesh.axes[i3].coordinates[j])
+                        p2 = shapely.geometry.Point(mesh.axes[i1].coordinates[k], mesh.axes[i2].coordinates[i],
+                                                    mesh.axes[i3].coordinates[j])
                         r[k, i, j] = p1.distance(p2)
         return r
 
@@ -133,8 +140,8 @@ class Geometry3d(AbstractGeometry):
         elif not isinstance(index, list) and not isinstance(index, tuple):
             index = [0, 1]
 
-        tmp_p = np.array([points[0], points[7], points[1]])
-        pol = shapely.geometry.Polygon(tmp_p)
+
+        assert len(points) == 2
 
         if len(index) < 2:
             raise Exception("Custom axis should implement cell_edges3d method. "
@@ -156,16 +163,30 @@ class Geometry3d(AbstractGeometry):
                                           " See docstring for more information.")
             shape = (mesh.axes[i1].size, mesh.axes[i2].size)
             res = np.zeros(shape)
+
             for i, row in enumerate(res):
                 for j, _ in enumerate(row):
-                    cell = shapely.geometry.Polygon(cells[i][j])
+                    tris = Geometry3d.get_triangles(cells[i][j])
+
+                    mn, mx = None, None
+                    mn_dist, mx_dist = None, None
+
+                    for tri in tris:
+                        p = Geometry3d.triangle_line_intersection(tri, points)
+                        if p is not None:
+                            print(p)
+                            delta = p - points[0]
+                            if mn is None or norm(delta) < mn_dist:
+                                mn_dist = norm(delta)
+                                mn = p
+                            if mx is None or norm(delta) > mx_dist:
+                                mx_dist = norm(delta)
+                                mx = p
                     if calc_area:
-                        if pol.intersects(cell):
-                            res[i, j] = pol.intersection(cell).area
+                        res[i, j] = 0 if mn is None else norm(mx - mn)
                     else:
-                        inters = pol.intersects(cell)
-                        if inters:
-                            res[i, j] = 1
+                        res[i, j] = 0 if mn is None else 1
+                    #print(i, j)
             return res
         elif len(index) == 3:
             i1 = index[0]
@@ -195,3 +216,59 @@ class Geometry3d(AbstractGeometry):
             return res
         else:
             raise TypeError("Unknown axes formation.")
+
+    @staticmethod
+    def triangle_line_intersection(tri, line, EPS=0.0001):
+        """
+        Determine whether or not the line segment p1,p2
+        Intersects the 3 vertex facet bounded by pa,pb,pc
+        Return true/false and the intersection point p
+
+        The equation of the line is p = p1 + mu (p2 - p1)
+        The equation of the plane is a x + b y + c z + d = 0
+                                    n.x x + n.y y + n.z z + d = 0
+        :param EPS: epsilon for intersect calculation
+        :param tri: 3 points of triangle
+        :param line: 2 points of line
+        :return: point, if intersects, None - otherwise
+        """
+        n = np.cross((tri[1] - tri[0]), (tri[2] - tri[0]))
+        n = n / norm(n)
+
+        # Calculate the position on the line that intersects the plane
+        denom = np.dot(n, (line[1] - line[0]))
+        if abs(denom) < EPS:
+            return None
+
+        d = np.dot((n * -1), tri[0])
+        mu = -(d + np.dot(n, line[0])) / denom
+        # Intersection not along line segment
+        if mu < 0 or mu > 1:
+            return None
+        p = line[0] + (line[1] - line[0]) * mu
+        # Determine whether or not the intersection point is bounded by pa,pb,pc
+        pa1 = tri[0] - p
+        pa2 = tri[1] - p
+        pa3 = tri[2] - p
+
+        pa1 = pa1 / norm(pa1)
+        pa2 = pa2 / norm(pa2)
+        pa3 = pa3 / norm(pa3)
+
+        a1 = np.clip(np.dot(pa1, pa2), -1, 1)
+        a2 = np.clip(np.dot(pa2, pa3), -1, 1)
+        a3 = np.clip(np.dot(pa3, pa1), -1, 1)
+        total = (acos(a1) + acos(a2) + acos(a3))
+        if abs(total - 2 * np.pi) > EPS:
+            return None
+        return p
+
+    @staticmethod
+    def get_triangles(pnts):
+        res = []
+        for i in range(0, len(pnts)):
+            for j in range(i + 1, len(pnts)):
+                for k in range(j + 1, len(pnts)):
+                    res.append(np.array([pnts[i], pnts[j], pnts[k]]))
+
+        return res

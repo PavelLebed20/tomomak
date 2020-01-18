@@ -2,6 +2,10 @@ import warnings
 import numpy
 import shapely.geometry
 import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
+from shapely import affinity
+from scipy.spatial.transform import Rotation as R
+from sklearn import clone
 
 from tomomak.plots.plot2d import spiderweb_colormesh2d, detector_spiderweb_colormesh2d
 from tomomak.mesh.abstract_axes import Abstract2dAxis
@@ -258,4 +262,30 @@ class SpiderWeb2dAxis(Abstract2dAxis):
         raise NotImplemented("SpiderWeb2dAxis plot3d: not implemented method")
 
     def cell_edges3d(self, axis2):
-        raise NotImplemented("SpiderWeb2dAxis cell_edges3d: not implemented method")
+        if axis2.coordinates[0] < 0 or axis2.coordinates[-1] > 2 * numpy.pi:
+            raise AttributeError('axis2 is not like circled axis (lower_limit < 0 or axis2.upper_limit > 2 * pi)')
+
+        shape = (self.size, axis2.size)
+        res = numpy.zeros(shape).tolist()
+        step = 1
+        for i, coord in enumerate(axis2.coordinates):
+            if i == len(axis2.coordinates) - 1:
+                step = -i
+            coord_next = axis2.coordinates[i + step]
+            for j, domain in enumerate(self._domains):
+                far_rotated_domain = []
+                near_rotated_domain = []
+
+                r = R.from_euler('y', coord_next, degrees=False)
+                for point in domain:
+                    far_rotated_domain.append(r.apply((point[0], point[1], 0)))
+
+                r = R.from_euler('y', coord, degrees=False)
+                for point in domain:
+                    near_rotated_domain.append(r.apply((point[0], point[1], 0)))
+
+                r = near_rotated_domain
+                r.extend(far_rotated_domain)
+                res[j][i] = r
+
+        return res
