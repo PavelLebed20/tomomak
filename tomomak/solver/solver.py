@@ -31,7 +31,7 @@ class Solver:
             if len(self.stop_values) != len(self.stop_conditions):
                 raise ValueError("stop_conditions and stop_values have different length.")
         # Init iterator and constraints.
-       # print("Start calculation with {} iterations using {}.".format(steps, self.iterator))
+        print("Start calculation with {} iterations using {}.".format(steps, self.iterator))
         if self.iterator is not None:
             self.iterator.init(model, steps, *args, **kwargs)
         if self.constraints is not None:

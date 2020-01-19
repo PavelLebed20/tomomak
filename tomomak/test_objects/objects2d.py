@@ -39,8 +39,8 @@ def polygon(mesh, points=((0, 0), (5, 5), (10, 0)), index=(0, 1), density=1, bro
     """
     if isinstance(index, int):
         index = [index]
-    res = tomomak.util.geometry.geometry2d.intersection_2d(mesh, points, index)
-    ds = tomomak.util.geometry.geometry2d.cell_areas(mesh, index)
+    res = tomomak.util.geometry.geometry2d.Geometry2d.intersection(mesh, points, index)
+    ds = tomomak.util.geometry.geometry2d.Geometry2d.cell_areas(mesh, index)
     res /= ds
     res *= density
     if broadcast:

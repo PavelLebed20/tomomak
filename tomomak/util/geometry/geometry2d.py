@@ -8,7 +8,7 @@ from tomomak.util.geometry.AbstractGeometry import AbstractGeometry
 
 class Geometry2d(AbstractGeometry):
     @staticmethod
-    def _line_to_polygon(p1, p2, width, divergence=0):
+    def line_to_polygon(p1, p2, width, divergence=0):
         """Generate detector geometry for one Line of Sight.
 
         line of sight can be collimated or diverging (cone-like).

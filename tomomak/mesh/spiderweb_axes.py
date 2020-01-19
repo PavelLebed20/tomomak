@@ -2,10 +2,7 @@ import warnings
 import numpy
 import shapely.geometry
 import matplotlib.pyplot as plt
-from matplotlib.patches import Polygon
-from shapely import affinity
 from scipy.spatial.transform import Rotation as R
-from sklearn import clone
 
 from tomomak.plots.plot2d import spiderweb_colormesh2d, detector_spiderweb_colormesh2d
 from tomomak.mesh.abstract_axes import Abstract2dAxis

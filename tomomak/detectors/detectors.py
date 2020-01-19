@@ -1,10 +1,8 @@
 """Generators for basic detectors arrays in 2D geometry
 """
-from math import acos, sin, cos
 
 import shapely.geometry
 import shapely.affinity
-from scipy.stats import norm
 
 import tomomak.util.geometry.AbstractGeometry
 from tomomak.util.geometry.geometry2d import Geometry2d
@@ -39,7 +37,7 @@ def line_intersect(mesh, p1, p2, width, divergence=0, index=(0, 1), response=1, 
     Returns:
          ndarray: numpy array, representing one detector on a given mesh.
     """
-    points = geometry._line_to_polygon(p1, p2, width, divergence)
+    points = geometry.line_to_polygon(p1, p2, width, divergence)
     if isinstance(index, int):
         index = [index]
     res = geometry.intersection(mesh, points, index, calc_area)
@@ -88,7 +86,7 @@ def fan_detector(mesh, p1, p2, width,  number, index=(0, 1), angle=np.pi/2, *arg
     res = np.zeros(shape)
     for i in range(number):
         p1, p2 = line.coords
-        addition = np.array([line(mesh, p1, p2, width, index=index,  *args, **kwargs)])
+        addition = np.array([line_intersect(mesh, p1, p2, width, index=index,  *args, **kwargs)])
         res = np.append(res, addition, axis=0)
         line = shapely.affinity.rotate(line, rot_angle, origin=p1, use_radians=True)
     return res
@@ -160,7 +158,7 @@ def parallel_detector(mesh, p1, p2, width, number, shift, index=(0, 1), *args, *
     res = np.zeros(shape)
     for i in range(number):
         p1, p2 = line.coords
-        addition = np.array([line(mesh, p1, p2, width, index=index,  *args, **kwargs)])
+        addition = np.array([line_intersect(mesh, p1, p2, width, index=index,  *args, **kwargs)])
         res = np.append(res, addition, axis=0)
         line = line.parallel_offset(shift, 'left')
     return res
